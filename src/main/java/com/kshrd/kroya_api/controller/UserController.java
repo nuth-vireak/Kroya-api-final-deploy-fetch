@@ -28,8 +28,10 @@ public class UserController {
                     """
     )
     @GetMapping("/foods")
-    public BaseResponse<?> getFoodsByCurrentUser() {
-        return userService.getFoodsByCurrentUser();
+    public BaseResponse<?> getFoodsByCurrentUser(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return userService.getFoodsByCurrentUser(page, size);
     }
 
     @Operation(

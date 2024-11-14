@@ -2,18 +2,15 @@ package com.kshrd.kroya_api.service.User;
 
 import com.kshrd.kroya_api.dto.PhotoDTO;
 import com.kshrd.kroya_api.dto.UserDTO;
-import com.kshrd.kroya_api.dto.UserEntityDTO;
 import com.kshrd.kroya_api.dto.UserProfileDTO;
 import com.kshrd.kroya_api.entity.*;
 import com.kshrd.kroya_api.entity.token.TokenRepository;
 import com.kshrd.kroya_api.exception.NotFoundExceptionHandler;
-import com.kshrd.kroya_api.exception.constand.FieldBlankExceptionHandler;
 import com.kshrd.kroya_api.exception.exceptionValidateInput.Validation;
 import com.kshrd.kroya_api.payload.Auth.UserProfileUpdateRequest;
 import com.kshrd.kroya_api.payload.BaseResponse;
 import com.kshrd.kroya_api.payload.FoodRecipe.FoodRecipeCardResponse;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellCardResponse;
-import com.kshrd.kroya_api.payload.User.UserResponse;
 import com.kshrd.kroya_api.repository.Address.AddressRepository;
 import com.kshrd.kroya_api.repository.Credencials.CredentialRepository;
 import com.kshrd.kroya_api.repository.DeviceToken.DeviceTokenRepository;
@@ -21,10 +18,11 @@ import com.kshrd.kroya_api.repository.Favorite.FavoriteRepository;
 import com.kshrd.kroya_api.repository.FoodRecipe.FoodRecipeRepository;
 import com.kshrd.kroya_api.repository.FoodSell.FoodSellRepository;
 import com.kshrd.kroya_api.repository.User.UserRepository;
-import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -59,16 +57,28 @@ public class UserServiceImpl implements UserService {
     private final Validation validation;
 
     @Override
-    public BaseResponse<?> getFoodsByCurrentUser() {
-        // Get the currently authenticated user
+    public BaseResponse<?> getFoodsByCurrentUser(int page, int size) {
+
         UserEntity currentUser = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         log.info("Fetching profile for user: {}", currentUser.getEmail());
 
-        // Fetch all food recipes and food sells posted by the current user
-        List<FoodRecipeEntity> userRecipes = foodRecipeRepository.findByUserId(currentUser.getId());
-        List<FoodSellEntity> userFoodSells = foodSellRepository.findByFoodRecipeUserId(currentUser.getId());
+        // Split the size equally for FoodRecipe and FoodSell
+        int halfSize = size / 2;
+        int adjustedSizeForUnevenSplit = (size % 2 == 0) ? halfSize : halfSize + 1;
 
-        // If no recipes and no sells found, return a no data response
+        // Create PageRequests for pagination
+        PageRequest pageRequestForRecipes = PageRequest.of(page, halfSize);
+        PageRequest pageRequestForSells = PageRequest.of(page, adjustedSizeForUnevenSplit);
+
+        // Fetch paginated food recipes and food sells posted by the current user
+        Page<FoodRecipeEntity> userRecipesPage = foodRecipeRepository.findByUserId(currentUser.getId(), pageRequestForRecipes);
+        Page<FoodSellEntity> userFoodSellsPage = foodSellRepository.findByFoodRecipeUserId(currentUser.getId(), pageRequestForSells);
+
+        // Convert pages to lists
+        List<FoodRecipeEntity> userRecipes = userRecipesPage.getContent();
+        List<FoodSellEntity> userFoodSells = userFoodSellsPage.getContent();
+
+        // Handle no data found case
         if (userRecipes.isEmpty() && userFoodSells.isEmpty()) {
             Map<String, Object> profileData = new LinkedHashMap<>();
             profileData.put("totalFoodRecipes", 0);
@@ -76,11 +86,14 @@ public class UserServiceImpl implements UserService {
             profileData.put("totalPosts", 0);
             profileData.put("foodSells", Collections.emptyList());
             profileData.put("foodRecipes", Collections.emptyList());
+            profileData.put("currentPage", page);
+            profileData.put("pageSize", size);
+            profileData.put("totalFoodRecipesPages", 0);
+            profileData.put("totalFoodSellsPages", 0);
 
             return BaseResponse.builder()
                     .message("No data available for the current user.")
-                    .statusCode(String.valueOf(HttpStatus.OK.value()))
-                    .payload(profileData)
+                    .statusCode(String.valueOf(HttpStatus.NO_CONTENT.value()))
                     .build();
         }
 
@@ -106,7 +119,7 @@ public class UserServiceImpl implements UserService {
                 .toList();
 
         // Count total posts
-        int totalFoodRecipes = pureFoodRecipes.size();
+        int totalFoodRecipes = userRecipes.size();
         int totalFoodSells = userFoodSells.size();
         int totalPosts = totalFoodRecipes + totalFoodSells;
 
@@ -117,11 +130,11 @@ public class UserServiceImpl implements UserService {
         DateTimeFormatter formatter = new DateTimeFormatterBuilder()
                 .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
                 .optionalStart()
-                .appendFraction(ChronoField.MILLI_OF_SECOND, 0, 3, true) // For milliseconds
+                .appendFraction(ChronoField.MILLI_OF_SECOND, 0, 3, true)
                 .optionalEnd()
                 .toFormatter();
 
-        // Map pure food recipes (not linked to food sells) to FoodRecipeCardResponse
+        // Map food recipes to FoodRecipeCardResponse
         List<FoodRecipeCardResponse> recipeResponses = pureFoodRecipes.stream()
                 .map(recipe -> {
                     FoodRecipeCardResponse response = modelMapper.map(recipe, FoodRecipeCardResponse.class);
@@ -196,7 +209,6 @@ public class UserServiceImpl implements UserService {
                 })
                 .collect(Collectors.toList());
 
-
         // Prepare response payload
         Map<String, Object> profileData = new LinkedHashMap<>();
         profileData.put("totalFoodRecipes", totalFoodRecipes);
@@ -204,10 +216,14 @@ public class UserServiceImpl implements UserService {
         profileData.put("totalPosts", totalPosts);
         profileData.put("foodSells", sellResponses);
         profileData.put("foodRecipes", recipeResponses);
+        profileData.put("currentPage", page);
+        profileData.put("pageSize", size);
+        profileData.put("totalFoodRecipesPages", userRecipesPage.getTotalPages());
+        profileData.put("totalFoodSellsPages", userFoodSellsPage.getTotalPages());
 
         // Return the response
         return BaseResponse.builder()
-                .message("Profile fetched successfully")
+                .message("Profile fetched successfully with pagination")
                 .statusCode(String.valueOf(HttpStatus.OK.value()))
                 .payload(profileData)
                 .build();
