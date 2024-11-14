@@ -38,6 +38,14 @@ public class BankController {
     }
 
     @Operation(
+            summary = "🔍 Get Bank Account by User ID",
+            description = "Retrieves the bank account associated with the specified user ID.")
+    @GetMapping("/{userId}")
+    public BaseResponse<?> getBankByUserId(@PathVariable Integer userId) {
+        return bankService.getBankByUserId(userId);
+    }
+
+    @Operation(
             summary = "✏️ Update Bank Account",
             description = "Updates an existing bank account by ID with the provided details.")
     @PutMapping("/{id}")

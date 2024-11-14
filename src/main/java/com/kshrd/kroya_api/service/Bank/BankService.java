@@ -14,4 +14,6 @@ public interface BankService {
     BaseResponse<?> deleteBank(Long bankId);
 
     BaseResponse<?> getByCurrentUser();
+
+    BaseResponse<?> getBankByUserId(Integer userId);
 }

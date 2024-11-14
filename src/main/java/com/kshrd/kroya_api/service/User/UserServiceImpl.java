@@ -469,6 +469,7 @@ public class UserServiceImpl implements UserService {
         // Ensure required fields are present
         validation.validateNotBlank(credentialEntity.getClientId(), "Client ID");
         validation.validateNotBlank(credentialEntity.getClientSecret(), "Client Secret");
+        validation.validateNotBlank(credentialEntity.getAccountNo(), "Account Number");
 
 
         UserEntity auth = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -489,6 +490,7 @@ public class UserServiceImpl implements UserService {
         // Set and save the updated credentials
         credential.setClientId(credentialEntity.getClientId());
         credential.setClientSecret(credentialEntity.getClientSecret());
+        credential.setAccountNo(credentialEntity.getAccountNo());
         credentialRepository.save(credential);
 
         log.info("Webill account connected successfully for user ID: {}", userId);
