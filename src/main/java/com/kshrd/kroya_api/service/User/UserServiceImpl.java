@@ -68,6 +68,22 @@ public class UserServiceImpl implements UserService {
         List<FoodRecipeEntity> userRecipes = foodRecipeRepository.findByUserId(currentUser.getId());
         List<FoodSellEntity> userFoodSells = foodSellRepository.findByFoodRecipeUserId(currentUser.getId());
 
+        // If no recipes and no sells found, return a no data response
+        if (userRecipes.isEmpty() && userFoodSells.isEmpty()) {
+            Map<String, Object> profileData = new LinkedHashMap<>();
+            profileData.put("totalFoodRecipes", 0);
+            profileData.put("totalFoodSells", 0);
+            profileData.put("totalPosts", 0);
+            profileData.put("foodSells", Collections.emptyList());
+            profileData.put("foodRecipes", Collections.emptyList());
+
+            return BaseResponse.builder()
+                    .message("No data available for the current user.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .payload(profileData)
+                    .build();
+        }
+
         // Get a list of foodRecipe IDs that are already linked to food sells
         Set<Long> foodSellRecipeIds = userFoodSells.stream()
                 .map(sell -> sell.getFoodRecipe().getId())
@@ -203,10 +219,7 @@ public class UserServiceImpl implements UserService {
         Optional<UserEntity> userOptional = userRepository.findById(userId);
         if (userOptional.isEmpty()) {
             log.error("User with ID {} not found", userId);
-            return BaseResponse.builder()
-                    .message("User not found")
-                    .statusCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
-                    .build();
+            throw new NotFoundExceptionHandler("User not found with ID: " + userId);
         }
         UserEntity user = userOptional.get();
 
@@ -216,6 +229,22 @@ public class UserServiceImpl implements UserService {
         // Fetch all food recipes and food sells posted by this user
         List<FoodRecipeEntity> userRecipes = foodRecipeRepository.findByUserId(user.getId());
         List<FoodSellEntity> userFoodSells = foodSellRepository.findByFoodRecipeUserId(user.getId());
+
+        // If no recipes and no sells found, return a no data response
+        if (userRecipes.isEmpty() && userFoodSells.isEmpty()) {
+            Map<String, Object> profileData = new LinkedHashMap<>();
+            profileData.put("totalFoodRecipes", 0);
+            profileData.put("totalFoodSells", 0);
+            profileData.put("totalPosts", 0);
+            profileData.put("foodSells", Collections.emptyList());
+            profileData.put("foodRecipes", Collections.emptyList());
+
+            return BaseResponse.builder()
+                    .message("No data found for the requested user.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .payload(profileData)
+                    .build();
+        }
 
         // Get a list of foodRecipe IDs that are already linked to food sells
         Set<Long> foodSellRecipeIds = userFoodSells.stream()
@@ -483,12 +512,22 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("User ID cannot be null.");
         }
 
+        // Fetch user by userId
+        Optional<UserEntity> userOptional = userRepository.findById(userId);
+        if (userOptional.isEmpty()) {
+            log.error("User with ID {} not found", userId);
+            throw new NotFoundExceptionHandler("User not found with ID: " + userId);
+        }
+
         // Retrieve credentials for the user
         Optional<CredentialEntity> credentialsOptional = Optional.ofNullable(credentialRepository.findByUserId(userId));
 
         // Check if credentials are present, else throw an exception
         if (credentialsOptional.isEmpty()) {
-            throw new NotFoundExceptionHandler("Credentials not found for the provided user ID.");
+            return BaseResponse.builder()
+                    .message("No credentials found for the user with ID: " + userId + ". Please ensure the user has registered their credentials.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         return BaseResponse.builder()
@@ -501,8 +540,18 @@ public class UserServiceImpl implements UserService {
     @Override
     public BaseResponse<?> getDeviceTokenByUserId(Integer userId) {
 
+        // Fetch user by userId
+        Optional<UserEntity> userOptional = userRepository.findById(userId);
+        if (userOptional.isEmpty()) {
+            log.error("User with ID {} not found", userId);
+            throw new NotFoundExceptionHandler("User not found with ID: " + userId);
+        }
+
         if (deviceTokenRepository.findByUserId(userId) == null) {
-            throw new NotFoundExceptionHandler("Device Token is not found!");
+            return BaseResponse.builder()
+                    .message("No device token registered for the specified user. Please ensure the user has linked a device.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
         return BaseResponse.builder()
                 .message("Device Token fetched successfully")

@@ -4,7 +4,11 @@ import com.kshrd.kroya_api.dto.PhotoDTO;
 import com.kshrd.kroya_api.dto.UserProfileDTO;
 import com.kshrd.kroya_api.entity.*;
 import com.kshrd.kroya_api.enums.ItemType;
+import com.kshrd.kroya_api.exception.DuplicateFieldExceptionHandler;
+import com.kshrd.kroya_api.exception.InvalidValueExceptionHandler;
+import com.kshrd.kroya_api.exception.NotFoundExceptionHandler;
 import com.kshrd.kroya_api.payload.BaseResponse;
+import com.kshrd.kroya_api.payload.Favorite.FavoriteResponse;
 import com.kshrd.kroya_api.payload.FoodRecipe.FoodRecipeCardResponse;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellCardResponse;
 import com.kshrd.kroya_api.repository.Favorite.FavoriteRepository;
@@ -44,14 +48,13 @@ public class FavoriteServiceImpl implements FavoriteService {
         UserEntity currentUser = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         log.info("User authenticated: {}", currentUser.getEmail());
 
+        FavoriteEntity savedFavoriteEntity = null;
+
         if (itemType == ItemType.FOOD_RECIPE) {
             // Find the FoodRecipe by ID
             Optional<FoodRecipeEntity> foodRecipeOptional = foodRecipeRepository.findById(Math.toIntExact(foodId));
             if (foodRecipeOptional.isEmpty()) {
-                return BaseResponse.builder()
-                        .message("Food Recipe not found")
-                        .statusCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
-                        .build();
+                throw new NotFoundExceptionHandler("Food Recipe not found");
             }
 
             FoodRecipeEntity foodRecipe = foodRecipeOptional.get();
@@ -59,19 +62,15 @@ public class FavoriteServiceImpl implements FavoriteService {
             // Check if this food recipe is linked to any food sell
             Optional<FoodSellEntity> linkedSell = foodSellRepository.findByFoodRecipe(foodRecipe);
             if (linkedSell.isPresent()) {
-                return BaseResponse.builder()
-                        .message("This recipe is part of a Food Sell. Please select the Food Sell item instead.")
-                        .statusCode("400")
-                        .build();
+                throw new InvalidValueExceptionHandler("This recipe is part of a Food Sell. Please select the Food Sell item instead.");
+
             }
 
             // Check if the recipe is already in the user's favorites
             Optional<FavoriteEntity> existingFavorite = favoriteRepository.findByUserAndFoodRecipe(currentUser, foodRecipe);
             if (existingFavorite.isPresent()) {
-                return BaseResponse.builder()
-                        .message("This recipe is already in your favorites")
-                        .statusCode("400")
-                        .build();
+                throw new DuplicateFieldExceptionHandler("This recipe is already in your favorites");
+
             }
 
             // Save the recipe to the favorites
@@ -87,10 +86,7 @@ public class FavoriteServiceImpl implements FavoriteService {
             // Find the FoodSell by ID
             Optional<FoodSellEntity> foodSellOptional = foodSellRepository.findById(foodId);
             if (foodSellOptional.isEmpty()) {
-                return BaseResponse.builder()
-                        .message("Food Sell not found")
-                        .statusCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
-                        .build();
+                throw new NotFoundExceptionHandler("Food Sell not found");
             }
 
             FoodSellEntity foodSell = foodSellOptional.get();
@@ -98,30 +94,33 @@ public class FavoriteServiceImpl implements FavoriteService {
             // Check if the sell item is already in the user's favorites
             Optional<FavoriteEntity> existingFavorite = favoriteRepository.findByUserAndFoodSell(currentUser, foodSell);
             if (existingFavorite.isPresent()) {
-                return BaseResponse.builder()
-                        .message("This item is already in your favorites")
-                        .statusCode("400")
-                        .build();
+                throw new DuplicateFieldExceptionHandler("This item is already in your favorites");
             }
 
             // Save the sell item to the favorites
-            FavoriteEntity favoriteEntity = FavoriteEntity.builder()
+            savedFavoriteEntity = FavoriteEntity.builder()
                     .user(currentUser)
                     .foodSell(foodSell)
                     .favoriteDate(LocalDateTime.now())
                     .build();
 
-            favoriteRepository.save(favoriteEntity);
+            favoriteRepository.save(savedFavoriteEntity);
 
         } else {
-            return BaseResponse.builder()
-                    .message("Invalid item type")
-                    .statusCode("400")
-                    .build();
+            throw new InvalidValueExceptionHandler("Invalid item type");
         }
 
+        FavoriteResponse favoriteResponse = new FavoriteResponse();
+        favoriteResponse.setId(savedFavoriteEntity.getId());
+        favoriteResponse.setUserEmail(savedFavoriteEntity.getUser() != null ? savedFavoriteEntity.getUser().getEmail() : "No user email");
+        favoriteResponse.setFoodRecipeId(savedFavoriteEntity.getFoodRecipe() != null ? savedFavoriteEntity.getFoodRecipe().getId() : null);
+        favoriteResponse.setFoodSellId(savedFavoriteEntity.getFoodSell() != null ? savedFavoriteEntity.getFoodSell().getId() : null);
+        favoriteResponse.setFavoriteDate(savedFavoriteEntity.getFavoriteDate());
+
+        // Return BaseResponse with the manually mapped favoriteResponse
         return BaseResponse.builder()
                 .message("Item added to favorites")
+                .payload(favoriteResponse)
                 .statusCode("201")
                 .build();
     }
@@ -134,14 +133,13 @@ public class FavoriteServiceImpl implements FavoriteService {
         UserEntity currentUser = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         log.info("User authenticated: {}", currentUser.getEmail());
 
+        FavoriteResponse favoriteResponse = null; // Response to hold details of the removed favorite
+
         if (itemType == ItemType.FOOD_RECIPE) {
             // Find the FoodRecipe by ID
             Optional<FoodRecipeEntity> foodRecipeOptional = foodRecipeRepository.findById(Math.toIntExact(foodId));
             if (foodRecipeOptional.isEmpty()) {
-                return BaseResponse.builder()
-                        .message("Food Recipe not found")
-                        .statusCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
-                        .build();
+                throw new NotFoundExceptionHandler("Food Recipe not found");
             }
 
             FoodRecipeEntity foodRecipe = foodRecipeOptional.get();
@@ -149,20 +147,22 @@ public class FavoriteServiceImpl implements FavoriteService {
             // Check if this food recipe is linked to any food sell
             Optional<FoodSellEntity> linkedSell = foodSellRepository.findByFoodRecipe(foodRecipe);
             if (linkedSell.isPresent()) {
-                return BaseResponse.builder()
-                        .message("This recipe is part of a Food Sell. Please select the Food Sell item instead.")
-                        .statusCode("400")
-                        .build();
+                throw new InvalidValueExceptionHandler("This recipe is part of a Food Sell. Please select the Food Sell item instead.");
             }
 
             // Check if the recipe is in the user's favorites
             Optional<FavoriteEntity> existingFavorite = favoriteRepository.findByUserAndFoodRecipe(currentUser, foodRecipe);
             if (existingFavorite.isEmpty()) {
-                return BaseResponse.builder()
-                        .message("This recipe is not in your favorites")
-                        .statusCode("400")
-                        .build();
+                throw new NotFoundExceptionHandler("This recipe is not in your favorites");
             }
+
+            FavoriteEntity favoriteEntity = existingFavorite.get();
+            favoriteResponse = new FavoriteResponse();
+            favoriteResponse.setId(favoriteEntity.getId());
+            favoriteResponse.setUserEmail(favoriteEntity.getUser() != null ? favoriteEntity.getUser().getEmail() : "No user email");
+            favoriteResponse.setFoodRecipeId(favoriteEntity.getFoodRecipe() != null ? favoriteEntity.getFoodRecipe().getId() : null);
+            favoriteResponse.setFoodSellId(favoriteEntity.getFoodSell() != null ? favoriteEntity.getFoodSell().getId() : null);
+            favoriteResponse.setFavoriteDate(favoriteEntity.getFavoriteDate());
 
             // Remove the favorite entry
             favoriteRepository.delete(existingFavorite.get());
@@ -172,10 +172,7 @@ public class FavoriteServiceImpl implements FavoriteService {
             // Find the FoodSell by ID
             Optional<FoodSellEntity> foodSellOptional = foodSellRepository.findById(foodId);
             if (foodSellOptional.isEmpty()) {
-                return BaseResponse.builder()
-                        .message("Food Sell not found")
-                        .statusCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
-                        .build();
+                throw new NotFoundExceptionHandler("Food Sell not found");
             }
 
             FoodSellEntity foodSell = foodSellOptional.get();
@@ -183,25 +180,28 @@ public class FavoriteServiceImpl implements FavoriteService {
             // Check if the sell item is in the user's favorites
             Optional<FavoriteEntity> existingFavorite = favoriteRepository.findByUserAndFoodSell(currentUser, foodSell);
             if (existingFavorite.isEmpty()) {
-                return BaseResponse.builder()
-                        .message("This item is not in your favorites")
-                        .statusCode("400")
-                        .build();
+                throw new NotFoundExceptionHandler("This item is not in your favorites");
             }
+
+            FavoriteEntity favoriteEntity = existingFavorite.get();
+            favoriteResponse = new FavoriteResponse();
+            favoriteResponse.setId(favoriteEntity.getId());
+            favoriteResponse.setUserEmail(favoriteEntity.getUser() != null ? favoriteEntity.getUser().getEmail() : "No user email");
+            favoriteResponse.setFoodRecipeId(favoriteEntity.getFoodRecipe() != null ? favoriteEntity.getFoodRecipe().getId() : null);
+            favoriteResponse.setFoodSellId(favoriteEntity.getFoodSell() != null ? favoriteEntity.getFoodSell().getId() : null);
+            favoriteResponse.setFavoriteDate(favoriteEntity.getFavoriteDate());
 
             // Remove the favorite entry
             favoriteRepository.delete(existingFavorite.get());
             log.info("Food Sell removed from favorites for user: {}", currentUser.getEmail());
 
         } else {
-            return BaseResponse.builder()
-                    .message("Invalid item type")
-                    .statusCode("400")
-                    .build();
+            throw new InvalidValueExceptionHandler("Invalid item type");
         }
 
         return BaseResponse.builder()
                 .message("Item removed from favorites")
+                .payload(favoriteResponse)
                 .statusCode("200")
                 .build();
     }
@@ -214,6 +214,13 @@ public class FavoriteServiceImpl implements FavoriteService {
 
         // Fetch all favorite entities for the user
         List<FavoriteEntity> favoriteEntities = favoriteRepository.findByUser(currentUser);
+
+        if (favoriteEntities.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("No favorite foods found for the current user. Please add some favorites.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
 
         // Get the current time in Phnom Penh time zone (UTC+7)
         ZonedDateTime currentDateTimeInPhnomPenh = ZonedDateTime.now(ZoneId.of("Asia/Phnom_Penh"));
@@ -319,6 +326,14 @@ public class FavoriteServiceImpl implements FavoriteService {
 
         // Search for favorite FoodRecipe items by name
         List<FavoriteEntity> favoriteRecipeEntities = favoriteRepository.findByUserAndFoodRecipeIsNotNull(currentUser);
+
+        if (favoriteRecipeEntities.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("No favorite foods found for the current user. Please try searching with a different name.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
+
         List<FoodRecipeCardResponse> favoriteFoodRecipes = favoriteRecipeEntities.stream()
                 .filter(favorite -> favorite.getFoodRecipe().getName().toLowerCase().contains(name.toLowerCase()))
                 .map(favorite -> {
@@ -337,6 +352,14 @@ public class FavoriteServiceImpl implements FavoriteService {
 
         // Search for favorite FoodSell items by name
         List<FavoriteEntity> favoriteSellEntities = favoriteRepository.findByUserAndFoodSellIsNotNull(currentUser);
+
+        if (favoriteSellEntities.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("No favorite food sells found for the current user. Please try searching with a different name.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
+
         List<FoodSellCardResponse> favoriteFoodSells = favoriteSellEntities.stream()
                 .filter(favorite -> favorite.getFoodSell().getFoodRecipe().getName().toLowerCase().contains(name.toLowerCase()))
                 .map(favorite -> {

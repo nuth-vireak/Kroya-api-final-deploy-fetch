@@ -2,6 +2,7 @@ package com.kshrd.kroya_api.controller;
 
 import com.kshrd.kroya_api.payload.BaseResponse;
 import com.kshrd.kroya_api.payload.FoodRecipe.FoodRecipeRequest;
+import com.kshrd.kroya_api.payload.FoodRecipe.FoodRecipeUpdateRequest;
 import com.kshrd.kroya_api.service.FoodRecipe.FoodRecipeService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
@@ -61,8 +62,8 @@ public class FoodRecipeController {
                     """
     )
     @PutMapping("/edit-food-recipe/{recipeId}")
-    public BaseResponse<?> editRecipe(@PathVariable Long recipeId, @RequestBody FoodRecipeRequest foodRecipeRequest) {
-        return foodRecipeService.editRecipe(recipeId, foodRecipeRequest);
+    public BaseResponse<?> editRecipe(@PathVariable Long recipeId, @RequestBody FoodRecipeUpdateRequest foodRecipeUpdateRequest) {
+        return foodRecipeService.editRecipe(recipeId, foodRecipeUpdateRequest);
     }
 
     @Operation(

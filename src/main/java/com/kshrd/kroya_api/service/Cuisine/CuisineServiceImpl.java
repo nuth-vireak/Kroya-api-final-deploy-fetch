@@ -64,7 +64,10 @@ public class CuisineServiceImpl implements CuisineService {
 
         if (cuisines.isEmpty()) {
             log.warn("No cuisines found.");
-            throw new NotFoundExceptionHandler("No cuisines found");
+            return BaseResponse.builder()
+                    .message("No cuisines found.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         log.info("Cuisines fetched successfully, count: {}", cuisines.size());

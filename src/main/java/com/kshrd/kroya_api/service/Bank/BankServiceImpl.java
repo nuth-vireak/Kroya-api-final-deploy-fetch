@@ -155,8 +155,8 @@ public class BankServiceImpl implements BankService {
 
         if (bankEntityOptional.isEmpty()) {
             return BaseResponse.builder()
-                    .message("Bank account not found for the current user")
-                    .statusCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
+                    .message("No bank account found for the current user. Please ensure your account details are correctly provided.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
                     .build();
         }
 

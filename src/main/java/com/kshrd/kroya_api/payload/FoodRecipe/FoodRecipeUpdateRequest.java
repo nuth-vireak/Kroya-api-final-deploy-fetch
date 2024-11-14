@@ -5,13 +5,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.swing.text.html.parser.Entity;
 import java.util.List;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class FoodRecipeRequest {
+public class FoodRecipeUpdateRequest {
     private List<PhotoEntity> photo; // Changed to List<String> to hold photo URLs
     private String name;
     private String description;
@@ -19,6 +18,6 @@ public class FoodRecipeRequest {
     private String level;
     private Long cuisineId;
     private Long categoryId;
-    private List<IngredientRequest> ingredients;
-    private List<CookingStepRequest> cookingSteps;
+    private List<Ingredient> ingredients;
+    private List<CookingStep> cookingSteps;
 }

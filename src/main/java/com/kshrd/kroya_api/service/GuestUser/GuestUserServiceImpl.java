@@ -13,6 +13,8 @@ import com.kshrd.kroya_api.payload.FoodRecipe.FoodRecipeCardResponse;
 import com.kshrd.kroya_api.payload.FoodRecipe.FoodRecipeResponse;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellCardResponse;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellResponse;
+import com.kshrd.kroya_api.repository.Category.CategoryRepository;
+import com.kshrd.kroya_api.repository.Cuisine.CuisineRepository;
 import com.kshrd.kroya_api.repository.Feedback.FeedbackRepository;
 import com.kshrd.kroya_api.repository.FoodRecipe.FoodRecipeRepository;
 import com.kshrd.kroya_api.repository.FoodSell.FoodSellRepository;
@@ -41,6 +43,8 @@ public class GuestUserServiceImpl implements GuestUserService {
     private final FoodRecipeRepository foodRecipeRepository;
     private final ModelMapper modelMapper;
     private final FeedbackRepository feedbackRepository;
+    private final CategoryRepository categoryRepository;
+    private final CuisineRepository cuisineRepository;
 
     //Get all food sells
     @Override
@@ -53,7 +57,10 @@ public class GuestUserServiceImpl implements GuestUserService {
         // Check if no records were found
         if (foodSellEntities.isEmpty()) {
             log.warn("No FoodSell records found in the database");
-            throw new NotFoundExceptionHandler("No FoodSell records found.");
+            return BaseResponse.builder()
+                    .message("No FoodSell records found.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Get the current time in Phnom Penh time zone (UTC+7)
@@ -125,7 +132,10 @@ public class GuestUserServiceImpl implements GuestUserService {
         // Check if no records were found
         if (foodRecipeEntities.isEmpty()) {
             log.warn("No FoodRecipe records found in the database");
-            throw new NotFoundExceptionHandler("No FoodRecipe records found.");
+            return BaseResponse.builder()
+                    .message("No FoodRecipe records found.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Map each FoodRecipeEntity to FoodRecipeCardResponse
@@ -176,13 +186,21 @@ public class GuestUserServiceImpl implements GuestUserService {
             throw new FieldBlankExceptionHandler("Category ID must be a positive number and cannot be null.");
         }
 
+        // check if category exists in database
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new NotFoundExceptionHandler("Category with ID " + categoryId + " not found.");
+        }
+
         // Fetch all food recipes and food sells by category
         List<FoodRecipeEntity> foodRecipes = foodRecipeRepository.findByCategoryId(categoryId);
         List<FoodSellEntity> foodSells = foodSellRepository.findByCategoryId(categoryId);
 
         // Check if no records were found for the provided categoryId
         if (foodRecipes.isEmpty() && foodSells.isEmpty()) {
-            throw new NotFoundExceptionHandler("No foods found for the specified category ID.");
+            return BaseResponse.builder()
+                    .message("No foods found for the specified category ID.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Filter out food recipes that are linked to food sells
@@ -376,6 +394,13 @@ public class GuestUserServiceImpl implements GuestUserService {
                 })
                 .collect(Collectors.toList());
 
+        if (popularRecipeResponses.isEmpty() && popularSellResponses.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("No popular foods found.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
+
         // Prepare the response map
         Map<String, List<?>> responseMap = new HashMap<>();
         responseMap.put("popularRecipes", popularRecipeResponses);
@@ -495,7 +520,10 @@ public class GuestUserServiceImpl implements GuestUserService {
 
         // Check if no records were found for the provided name
         if (foodRecipes.isEmpty() && foodSells.isEmpty()) {
-            throw new NotFoundExceptionHandler("No foods found for the specified name.");
+            return BaseResponse.builder()
+                    .message("No foods found for the specified name.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Filter out food recipes that are linked to food sells
@@ -570,13 +598,22 @@ public class GuestUserServiceImpl implements GuestUserService {
             throw new FieldBlankExceptionHandler("Cuisine ID must be a positive number and cannot be null.");
         }
 
+        // Check if the cuisineId exists in the database
+        boolean cuisineExists = cuisineRepository.existsById(cuisineId);
+        if (!cuisineExists) {
+            throw new NotFoundExceptionHandler("Cuisine ID " + cuisineId + " not found.");
+        }
+
         // Fetch all FoodRecipe entities by cuisine ID
         List<FoodRecipeEntity> foodRecipes = foodRecipeRepository.findByCuisineId(cuisineId);
 
         // Check if no records were found for the provided cuisineId
         if (foodRecipes.isEmpty()) {
             log.warn("No FoodRecipe records found for cuisine ID: {}", cuisineId);
-            throw new NotFoundExceptionHandler("No food recipes found for the specified cuisine ID.");
+            return BaseResponse.builder()
+                    .message("No food recipes found for the specified cuisine ID.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Map each FoodRecipeEntity to FoodRecipeCardResponse using ModelMapper
@@ -625,13 +662,22 @@ public class GuestUserServiceImpl implements GuestUserService {
             throw new FieldBlankExceptionHandler("Cuisine ID must be a positive number and cannot be null.");
         }
 
+        // Check if the cuisineId exists in the database
+        boolean cuisineExists = cuisineRepository.existsById(cuisineId);
+        if (!cuisineExists) {
+            throw new NotFoundExceptionHandler("Cuisine ID " + cuisineId + " not found.");
+        }
+
         // Fetch all FoodSell entities by cuisine ID
         List<FoodSellEntity> foodSells = foodSellRepository.findByCuisineId(cuisineId);
 
         // Check if no records were found for the provided cuisineId
         if (foodSells.isEmpty()) {
             log.warn("No FoodSell records found for cuisine ID: {}", cuisineId);
-            throw new NotFoundExceptionHandler("No food sells found for the specified cuisine ID.");
+            return BaseResponse.builder()
+                    .message("No food sells found for the specified cuisine ID.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Get the current time in Phnom Penh time zone (UTC+7)
@@ -706,11 +752,21 @@ public class GuestUserServiceImpl implements GuestUserService {
         // Check if there are no unique food names
         if (uniqueFoodNames.isEmpty()) {
             log.info("No food names found in both FoodRecipe and FoodSell repositories.");
-            throw new NotFoundExceptionHandler("No food names available.");
+            return BaseResponse.builder()
+                    .message("No food names found.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Map unique names to FoodNameDTO with a list of food names
         FoodNameDTO foodNameDTO = new FoodNameDTO(new ArrayList<>(uniqueFoodNames));
+
+        if (foodNameDTO.getFoodNames().isEmpty()) {
+            return BaseResponse.builder()
+                    .message("No unique food names found.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
 
         // Build the response with the unique food names
         return BaseResponse.builder()
@@ -728,7 +784,10 @@ public class GuestUserServiceImpl implements GuestUserService {
         // Fetch all food recipes
         List<FoodRecipeEntity> foodRecipes = foodRecipeRepository.findAll();
         if (foodRecipes.isEmpty()) {
-            throw new NotFoundExceptionHandler("No food recipes found.");
+            return BaseResponse.builder()
+                    .message("No food recipes found.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Filter out food recipes that are linked to food sells
@@ -738,9 +797,6 @@ public class GuestUserServiceImpl implements GuestUserService {
 
         // Fetch all food sells
         List<FoodSellEntity> foodSells = foodSellRepository.findAll();
-        if (foodSells.isEmpty()) {
-            throw new NotFoundExceptionHandler("No food sells found.");
-        }
 
         // Get the current time in Phnom Penh time zone (UTC+7)
         ZonedDateTime currentDateTimeInPhnomPenh = ZonedDateTime.now(ZoneId.of("Asia/Phnom_Penh"));
@@ -822,6 +878,13 @@ public class GuestUserServiceImpl implements GuestUserService {
                 })
                 .collect(Collectors.toList());
 
+        if (foodRecipeResponses.isEmpty() && foodSellResponses.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("No foods found.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
+
         // Prepare the response map
         Map<String, List<?>> responseMap = new HashMap<>();
         responseMap.put("foodRecipes", foodRecipeResponses);
@@ -844,7 +907,10 @@ public class GuestUserServiceImpl implements GuestUserService {
 
         // Check if no records were found for the provided name
         if (foodRecipes.isEmpty()) {
-            throw new NotFoundExceptionHandler("No food recipes found for the specified name.");
+            return BaseResponse.builder()
+                    .message("No food recipes found for the specified name.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Filter out food recipes that are linked to food sells
@@ -887,7 +953,10 @@ public class GuestUserServiceImpl implements GuestUserService {
 
         // Check if no records were found for the provided name
         if (foodSells.isEmpty()) {
-            throw new NotFoundExceptionHandler("No food sells found for the specified name.");
+            return BaseResponse.builder()
+                    .message("No food sells found for the specified name.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Map food sells to FoodSellCardResponse
