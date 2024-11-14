@@ -27,10 +27,10 @@ import io.swagger.v3.oas.annotations.servers.Server;
                 termsOfService = "Terms of service"
         ),
         servers = {
-//                @Server(
-//                        description = "PROD ENV",
-//                        url = "https://kroya-api-production.up.railway.app/"
-//                ),
+                @Server(
+                        description = "PROD ENV",
+                        url = "https://kroya-api-production.up.railway.app/"
+                ),
                 @Server(
                         description = "Local ENV",
                         url = "http://localhost:8089/"
