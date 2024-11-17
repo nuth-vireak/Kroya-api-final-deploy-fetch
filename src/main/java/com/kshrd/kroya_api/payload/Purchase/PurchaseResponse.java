@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -22,5 +24,6 @@ public class PurchaseResponse {
     private PurchaseStatusType purchaseStatusType;
     private Integer quantity;
     private Double totalPrice;
+    private LocalDateTime purchaseDate;
     private UserProfileDTO buyerInformation;
 }

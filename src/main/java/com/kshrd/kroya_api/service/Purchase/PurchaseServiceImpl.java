@@ -221,6 +221,7 @@ public class PurchaseServiceImpl implements PurchaseService {
                     .location(order.getLocation())
                     .paymentType(order.getPaymentType())
                     .purchaseStatusType(order.getPurchaseStatusType())
+                    .purchaseDate(order.getCreatedDate())
                     .quantity(order.getQuantity())
                     .totalPrice(order.getTotalPrice())
                     .buyerInformation(UserProfileDTO.builder()
