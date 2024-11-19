@@ -301,11 +301,13 @@ public class GuestUserServiceImpl implements GuestUserService {
         // Get the current time in Phnom Penh time zone (UTC+7)
         ZonedDateTime currentDateTimeInPhnomPenh = ZonedDateTime.now(ZoneId.of("Asia/Phnom_Penh"));
 
-        // Define a flexible DateTimeFormatter to handle variable fractional seconds
         DateTimeFormatter formatter = new DateTimeFormatterBuilder()
-                .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
+                .appendPattern("yyyy-MM-dd'T'HH:mm") // Base pattern for hours and minutes
                 .optionalStart()
-                .appendFraction(ChronoField.MILLI_OF_SECOND, 0, 3, true) // For milliseconds
+                .appendPattern(":ss") // Optional seconds pattern
+                .optionalEnd()
+                .optionalStart()
+                .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true) // Optional fractional seconds
                 .optionalEnd()
                 .toFormatter();
 
@@ -333,21 +335,24 @@ public class GuestUserServiceImpl implements GuestUserService {
                     // Set foodSellId explicitly
                     response.setFoodSellId(sell.getId());
 
+                    LocalDateTime dateCooking;
                     try {
-                        // Parse dateCooking using the updated DateTimeFormatter
-                        LocalDateTime dateCooking = LocalDateTime.parse(sell.getDateCooking().toString(), formatter);
-
-                        // Convert LocalDateTime to ZonedDateTime in Phnom Penh time zone
-                        ZonedDateTime dateCookingZoned = dateCooking.atZone(ZoneId.of("Asia/Phnom_Penh"));
-
-                        // Update isOrderable based on whether dateCooking is expired or not
-                        sell.setIsOrderable(!dateCookingZoned.isBefore(currentDateTimeInPhnomPenh));
-                        // Save the updated isOrderable value to the database
-                        foodSellRepository.save(sell);
+                        dateCooking = LocalDateTime.parse(sell.getDateCooking().toString(), formatter);
                     } catch (DateTimeParseException e) {
                         log.error("Failed to parse dateCooking: {}", sell.getDateCooking(), e);
+                        dateCooking = LocalDateTime.now(); // Fallback to current date-time
                     }
-                    // Set additional fields from the related FoodRecipeEntity
+
+                    // Convert LocalDateTime to ZonedDateTime in Phnom Penh time zone
+                    ZonedDateTime dateCookingZoned = dateCooking.atZone(ZoneId.of("Asia/Phnom_Penh"));
+
+                    // Update isOrderable based on whether dateCooking is expired or not
+                    if (dateCookingZoned.isBefore(currentDateTimeInPhnomPenh)) {
+                        sell.setIsOrderable(false);
+                    } else {
+                        sell.setIsOrderable(true);
+                    }
+
                     FoodRecipeEntity linkedRecipe = sell.getFoodRecipe();
 
                     // Map photos from FoodRecipeEntity to structured list
