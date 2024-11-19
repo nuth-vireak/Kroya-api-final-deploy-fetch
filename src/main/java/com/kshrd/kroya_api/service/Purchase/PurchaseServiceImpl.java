@@ -3,10 +3,7 @@ package com.kshrd.kroya_api.service.Purchase;
 import com.kshrd.kroya_api.dto.PhotoDTO;
 import com.kshrd.kroya_api.dto.UserProfileDTO;
 import com.kshrd.kroya_api.entity.*;
-import com.kshrd.kroya_api.enums.FoodCardType;
-import com.kshrd.kroya_api.enums.ItemType;
-import com.kshrd.kroya_api.enums.PaymentType;
-import com.kshrd.kroya_api.enums.PurchaseStatusType;
+import com.kshrd.kroya_api.enums.*;
 import com.kshrd.kroya_api.exception.FieldEmptyExceptionHandler;
 import com.kshrd.kroya_api.payload.BaseResponse;
 import com.kshrd.kroya_api.payload.FoodSell.BuyerOrderCardResponse;
@@ -108,6 +105,7 @@ public class PurchaseServiceImpl implements PurchaseService {
                 .name(product.getFoodRecipe().getName())
                 .dateCooking(product.getDateCooking())
                 .price(product.getPrice())
+                .currencyType(CurrencyType.valueOf(product.getCurrencyType()))
                 .averageRating(product.getFoodRecipe().getAverageRating())
                 .totalRaters(product.getFoodRecipe().getTotalRaters())
                 .isFavorite(favoriteRepository.existsByUserAndFoodSell(buyer, product))
