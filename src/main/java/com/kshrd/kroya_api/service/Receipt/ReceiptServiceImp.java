@@ -40,8 +40,8 @@ public class ReceiptServiceImp implements ReceiptService {
         FoodSellEntity product = purchase.getFoodSell();
         UserEntity seller = product.getFoodRecipe().getUser();
 
-        // Check if the current user is the seller of the item associated with the purchase
-        if (!currentUser.getId().equals(seller.getId())) {
+        // Check if the current user is either the buyer or the seller
+        if (!currentUser.getId().equals(seller.getId()) && !currentUser.getId().equals(purchase.getBuyer().getId())) {
             throw new NotFoundExceptionHandler("You are not authorized to view this receipt.");
         }
 
