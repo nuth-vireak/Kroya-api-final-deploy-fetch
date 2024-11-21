@@ -62,7 +62,10 @@ public class CategoryServiceImp implements CategoryService {
 
         if (categories.isEmpty()) {
             log.info("No categories found.");
-            throw new NotFoundExceptionHandler("No categories found");
+            return BaseResponse.builder()
+                    .message("No categories found")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         log.info("Categories fetched successfully, count: {}", categories.size());

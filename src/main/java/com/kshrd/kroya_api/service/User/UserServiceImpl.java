@@ -2,18 +2,15 @@ package com.kshrd.kroya_api.service.User;
 
 import com.kshrd.kroya_api.dto.PhotoDTO;
 import com.kshrd.kroya_api.dto.UserDTO;
-import com.kshrd.kroya_api.dto.UserEntityDTO;
 import com.kshrd.kroya_api.dto.UserProfileDTO;
 import com.kshrd.kroya_api.entity.*;
 import com.kshrd.kroya_api.entity.token.TokenRepository;
 import com.kshrd.kroya_api.exception.NotFoundExceptionHandler;
-import com.kshrd.kroya_api.exception.constand.FieldBlankExceptionHandler;
 import com.kshrd.kroya_api.exception.exceptionValidateInput.Validation;
 import com.kshrd.kroya_api.payload.Auth.UserProfileUpdateRequest;
 import com.kshrd.kroya_api.payload.BaseResponse;
 import com.kshrd.kroya_api.payload.FoodRecipe.FoodRecipeCardResponse;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellCardResponse;
-import com.kshrd.kroya_api.payload.User.UserResponse;
 import com.kshrd.kroya_api.repository.Address.AddressRepository;
 import com.kshrd.kroya_api.repository.Credencials.CredentialRepository;
 import com.kshrd.kroya_api.repository.DeviceToken.DeviceTokenRepository;
@@ -21,10 +18,11 @@ import com.kshrd.kroya_api.repository.Favorite.FavoriteRepository;
 import com.kshrd.kroya_api.repository.FoodRecipe.FoodRecipeRepository;
 import com.kshrd.kroya_api.repository.FoodSell.FoodSellRepository;
 import com.kshrd.kroya_api.repository.User.UserRepository;
-import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -59,14 +57,45 @@ public class UserServiceImpl implements UserService {
     private final Validation validation;
 
     @Override
-    public BaseResponse<?> getFoodsByCurrentUser() {
-        // Get the currently authenticated user
+    public BaseResponse<?> getFoodsByCurrentUser(int page, int size) {
+
         UserEntity currentUser = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         log.info("Fetching profile for user: {}", currentUser.getEmail());
 
-        // Fetch all food recipes and food sells posted by the current user
-        List<FoodRecipeEntity> userRecipes = foodRecipeRepository.findByUserId(currentUser.getId());
-        List<FoodSellEntity> userFoodSells = foodSellRepository.findByFoodRecipeUserId(currentUser.getId());
+        // Split the size equally for FoodRecipe and FoodSell
+        int halfSize = size / 2;
+        int adjustedSizeForUnevenSplit = (size % 2 == 0) ? halfSize : halfSize + 1;
+
+        // Create PageRequests for pagination
+        PageRequest pageRequestForRecipes = PageRequest.of(page, halfSize);
+        PageRequest pageRequestForSells = PageRequest.of(page, adjustedSizeForUnevenSplit);
+
+        // Fetch paginated food recipes and food sells posted by the current user
+        Page<FoodRecipeEntity> userRecipesPage = foodRecipeRepository.findByUserId(currentUser.getId(), pageRequestForRecipes);
+        Page<FoodSellEntity> userFoodSellsPage = foodSellRepository.findByFoodRecipeUserId(currentUser.getId(), pageRequestForSells);
+
+        // Convert pages to lists
+        List<FoodRecipeEntity> userRecipes = userRecipesPage.getContent();
+        List<FoodSellEntity> userFoodSells = userFoodSellsPage.getContent();
+
+        // Handle no data found case
+        if (userRecipes.isEmpty() && userFoodSells.isEmpty()) {
+            Map<String, Object> profileData = new LinkedHashMap<>();
+            profileData.put("totalFoodRecipes", 0);
+            profileData.put("totalFoodSells", 0);
+            profileData.put("totalPosts", 0);
+            profileData.put("foodSells", Collections.emptyList());
+            profileData.put("foodRecipes", Collections.emptyList());
+            profileData.put("currentPage", page);
+            profileData.put("pageSize", size);
+            profileData.put("totalFoodRecipesPages", 0);
+            profileData.put("totalFoodSellsPages", 0);
+
+            return BaseResponse.builder()
+                    .message("No data available for the current user.")
+                    .statusCode(String.valueOf(HttpStatus.NO_CONTENT.value()))
+                    .build();
+        }
 
         // Get a list of foodRecipe IDs that are already linked to food sells
         Set<Long> foodSellRecipeIds = userFoodSells.stream()
@@ -90,7 +119,7 @@ public class UserServiceImpl implements UserService {
                 .toList();
 
         // Count total posts
-        int totalFoodRecipes = pureFoodRecipes.size();
+        int totalFoodRecipes = userRecipes.size();
         int totalFoodSells = userFoodSells.size();
         int totalPosts = totalFoodRecipes + totalFoodSells;
 
@@ -101,11 +130,11 @@ public class UserServiceImpl implements UserService {
         DateTimeFormatter formatter = new DateTimeFormatterBuilder()
                 .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
                 .optionalStart()
-                .appendFraction(ChronoField.MILLI_OF_SECOND, 0, 3, true) // For milliseconds
+                .appendFraction(ChronoField.MILLI_OF_SECOND, 0, 3, true)
                 .optionalEnd()
                 .toFormatter();
 
-        // Map pure food recipes (not linked to food sells) to FoodRecipeCardResponse
+        // Map food recipes to FoodRecipeCardResponse
         List<FoodRecipeCardResponse> recipeResponses = pureFoodRecipes.stream()
                 .map(recipe -> {
                     FoodRecipeCardResponse response = modelMapper.map(recipe, FoodRecipeCardResponse.class);
@@ -180,7 +209,6 @@ public class UserServiceImpl implements UserService {
                 })
                 .collect(Collectors.toList());
 
-
         // Prepare response payload
         Map<String, Object> profileData = new LinkedHashMap<>();
         profileData.put("totalFoodRecipes", totalFoodRecipes);
@@ -188,10 +216,14 @@ public class UserServiceImpl implements UserService {
         profileData.put("totalPosts", totalPosts);
         profileData.put("foodSells", sellResponses);
         profileData.put("foodRecipes", recipeResponses);
+        profileData.put("currentPage", page);
+        profileData.put("pageSize", size);
+        profileData.put("totalFoodRecipesPages", userRecipesPage.getTotalPages());
+        profileData.put("totalFoodSellsPages", userFoodSellsPage.getTotalPages());
 
         // Return the response
         return BaseResponse.builder()
-                .message("Profile fetched successfully")
+                .message("Profile fetched successfully with pagination")
                 .statusCode(String.valueOf(HttpStatus.OK.value()))
                 .payload(profileData)
                 .build();
@@ -203,7 +235,7 @@ public class UserServiceImpl implements UserService {
         Optional<UserEntity> userOptional = userRepository.findById(userId);
         if (userOptional.isEmpty()) {
             log.error("User with ID {} not found", userId);
-            throw new NotFoundExceptionHandler("User not found with Id : " + userId);
+            throw new NotFoundExceptionHandler("User not found with ID: " + userId);
         }
         UserEntity user = userOptional.get();
 
@@ -213,6 +245,22 @@ public class UserServiceImpl implements UserService {
         // Fetch all food recipes and food sells posted by this user
         List<FoodRecipeEntity> userRecipes = foodRecipeRepository.findByUserId(user.getId());
         List<FoodSellEntity> userFoodSells = foodSellRepository.findByFoodRecipeUserId(user.getId());
+
+        // If no recipes and no sells found, return a no data response
+        if (userRecipes.isEmpty() && userFoodSells.isEmpty()) {
+            Map<String, Object> profileData = new LinkedHashMap<>();
+            profileData.put("totalFoodRecipes", 0);
+            profileData.put("totalFoodSells", 0);
+            profileData.put("totalPosts", 0);
+            profileData.put("foodSells", Collections.emptyList());
+            profileData.put("foodRecipes", Collections.emptyList());
+
+            return BaseResponse.builder()
+                    .message("No data found for the requested user.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .payload(profileData)
+                    .build();
+        }
 
         // Get a list of foodRecipe IDs that are already linked to food sells
         Set<Long> foodSellRecipeIds = userFoodSells.stream()
@@ -434,6 +482,7 @@ public class UserServiceImpl implements UserService {
         // Ensure required fields are present
         validation.validateNotBlank(credentialEntity.getClientId(), "Client ID");
         validation.validateNotBlank(credentialEntity.getClientSecret(), "Client Secret");
+        validation.validateNotBlank(credentialEntity.getAccountNo(), "Account Number");
 
 
         UserEntity auth = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -454,6 +503,7 @@ public class UserServiceImpl implements UserService {
         // Set and save the updated credentials
         credential.setClientId(credentialEntity.getClientId());
         credential.setClientSecret(credentialEntity.getClientSecret());
+        credential.setAccountNo(credentialEntity.getAccountNo());
         credentialRepository.save(credential);
 
         log.info("Webill account connected successfully for user ID: {}", userId);
@@ -493,12 +543,22 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("User ID cannot be null.");
         }
 
+        // Fetch user by userId
+        Optional<UserEntity> userOptional = userRepository.findById(userId);
+        if (userOptional.isEmpty()) {
+            log.error("User with ID {} not found", userId);
+            throw new NotFoundExceptionHandler("User not found with ID: " + userId);
+        }
+
         // Retrieve credentials for the user
         Optional<CredentialEntity> credentialsOptional = Optional.ofNullable(credentialRepository.findByUserId(userId));
 
         // Check if credentials are present, else throw an exception
         if (credentialsOptional.isEmpty()) {
-            throw new NotFoundExceptionHandler("Credentials not found for the provided user ID.");
+            return BaseResponse.builder()
+                    .message("No credentials found for the user with ID: " + userId + ". Please ensure the user has registered their credentials.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         return BaseResponse.builder()
@@ -511,8 +571,18 @@ public class UserServiceImpl implements UserService {
     @Override
     public BaseResponse<?> getDeviceTokenByUserId(Integer userId) {
 
+        // Fetch user by userId
+        Optional<UserEntity> userOptional = userRepository.findById(userId);
+        if (userOptional.isEmpty()) {
+            log.error("User with ID {} not found", userId);
+            throw new NotFoundExceptionHandler("User not found with ID: " + userId);
+        }
+
         if (deviceTokenRepository.findByUserId(userId) == null) {
-            throw new NotFoundExceptionHandler("Device Token is not found!");
+            return BaseResponse.builder()
+                    .message("No device token registered for the specified user. Please ensure the user has linked a device.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
         return BaseResponse.builder()
                 .message("Device Token fetched successfully")

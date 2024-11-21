@@ -1,12 +1,10 @@
 package com.kshrd.kroya_api.service.FoodRecipe;
 
-import com.kshrd.kroya_api.dto.UserProfileDTO;
 import com.kshrd.kroya_api.entity.*;
 import com.kshrd.kroya_api.exception.NotFoundExceptionHandler;
 import com.kshrd.kroya_api.payload.BaseResponse;
 import com.kshrd.kroya_api.payload.FoodRecipe.*;
 import com.kshrd.kroya_api.dto.PhotoDTO;
-import com.kshrd.kroya_api.payload.FoodSell.FoodSellCardResponse;
 import com.kshrd.kroya_api.repository.Category.CategoryRepository;
 import com.kshrd.kroya_api.repository.Cuisine.CuisineRepository;
 import com.kshrd.kroya_api.repository.Favorite.FavoriteRepository;
@@ -20,10 +18,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -68,25 +66,29 @@ public class FoodRecipeServiceImpl implements FoodRecipeService {
 
         CuisineEntity cuisineEntity = cuisineOptional.get();
 
-        // Assign unique IDs to ingredients if they are null or 0
-        List<Ingredient> ingredients = foodRecipeRequest.getIngredients();
-        long ingredientIdCounter = 1L;  // Start the ID counter for ingredients
+        // Generate sequential IDs for ingredients if not provided
+        AtomicLong ingredientIdCounter = new AtomicLong(1L);
+        List<Ingredient> ingredients = foodRecipeRequest.getIngredients().stream()
+                .map(req -> {
+                    Ingredient ingredient = modelMapper.map(req, Ingredient.class);
+                    if (ingredient.getId() == null || ingredient.getId() == 0) {
+                        ingredient.setId(ingredientIdCounter.getAndIncrement());
+                    }
+                    return ingredient;
+                })
+                .collect(Collectors.toList());
 
-        for (Ingredient ingredient : ingredients) {
-            if (ingredient.getId() == null || ingredient.getId() == 0) {
-                ingredient.setId(ingredientIdCounter++);  // Assign a new ID
-            }
-        }
-
-        // Assign unique IDs to cooking steps if they are null or 0
-        List<CookingStep> cookingSteps = foodRecipeRequest.getCookingSteps();
-        long cookingStepIdCounter = 1L;  // Start the ID counter for cooking steps
-
-        for (CookingStep cookingStep : cookingSteps) {
-            if (cookingStep.getId() == null || cookingStep.getId() == 0) {
-                cookingStep.setId(cookingStepIdCounter++);  // Assign a new ID
-            }
-        }
+        // Generate sequential IDs for cooking steps if not provided
+        AtomicLong cookingStepIdCounter = new AtomicLong(1L);
+        List<CookingStep> cookingSteps = foodRecipeRequest.getCookingSteps().stream()
+                .map(req -> {
+                    CookingStep step = modelMapper.map(req, CookingStep.class);
+                    if (step.getId() == null || step.getId() == 0) {
+                        step.setId(cookingStepIdCounter.getAndIncrement());
+                    }
+                    return step;
+                })
+                .collect(Collectors.toList());
 
         // Map the RecipeRequest to RecipeEntity
         FoodRecipeEntity foodRecipeEntity = FoodRecipeEntity.builder()
@@ -159,6 +161,14 @@ public class FoodRecipeServiceImpl implements FoodRecipeService {
         // Fetch all FoodRecipeEntity records from the database
         List<FoodRecipeEntity> foodRecipeEntities = foodRecipeRepository.findAll();
 
+        if (foodRecipeEntities.isEmpty()) {
+            log.error("No food recipes found");
+            return BaseResponse.builder()
+                    .message("No food recipes available at the moment. Please check back later.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
+
         // Fetch the user's favorite recipes
         List<FavoriteEntity> userFavorites = favoriteRepository.findByUserAndFoodRecipeIsNotNull(currentUser);
         List<Long> userFavoriteRecipeIds = userFavorites.stream()
@@ -196,7 +206,7 @@ public class FoodRecipeServiceImpl implements FoodRecipeService {
     }
 
     @Override
-    public BaseResponse<?> editRecipe(Long recipeId, FoodRecipeRequest foodRecipeRequest) {
+    public BaseResponse<?> editRecipe(Long recipeId, FoodRecipeUpdateRequest foodRecipeUpdateRequest) {
         // Get the currently authenticated user
         UserEntity currentUser = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         log.info("User authenticated: {}", currentUser.getEmail());
@@ -223,18 +233,18 @@ public class FoodRecipeServiceImpl implements FoodRecipeService {
         }
 
         // Fetch and validate CategoryEntity and CuisineEntity
-        Optional<CategoryEntity> categoryOptional = categoryRepository.findById(foodRecipeRequest.getCategoryId());
+        Optional<CategoryEntity> categoryOptional = categoryRepository.findById(foodRecipeUpdateRequest.getCategoryId());
         if (categoryOptional.isEmpty()) {
-            log.error("Category with ID {} not found", foodRecipeRequest.getCategoryId());
+            log.error("Category with ID {} not found", foodRecipeUpdateRequest.getCategoryId());
             return BaseResponse.builder()
                     .message("Category not found")
                     .statusCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
                     .build();
         }
 
-        Optional<CuisineEntity> cuisineOptional = cuisineRepository.findById(foodRecipeRequest.getCuisineId());
+        Optional<CuisineEntity> cuisineOptional = cuisineRepository.findById(foodRecipeUpdateRequest.getCuisineId());
         if (cuisineOptional.isEmpty()) {
-            log.error("Cuisine with ID {} not found", foodRecipeRequest.getCuisineId());
+            log.error("Cuisine with ID {} not found", foodRecipeUpdateRequest.getCuisineId());
             return BaseResponse.builder()
                     .message("Cuisine not found")
                     .statusCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
@@ -245,38 +255,86 @@ public class FoodRecipeServiceImpl implements FoodRecipeService {
         CuisineEntity cuisineEntity = cuisineOptional.get();
 
         // Update recipe details
-        existingRecipe.setName(foodRecipeRequest.getName());
-        existingRecipe.setDescription(foodRecipeRequest.getDescription());
-        existingRecipe.setDurationInMinutes(foodRecipeRequest.getDurationInMinutes());
-        existingRecipe.setLevel(foodRecipeRequest.getLevel());
+        existingRecipe.setName(foodRecipeUpdateRequest.getName());
+        existingRecipe.setDescription(foodRecipeUpdateRequest.getDescription());
+        existingRecipe.setDurationInMinutes(foodRecipeUpdateRequest.getDurationInMinutes());
+        existingRecipe.setLevel(foodRecipeUpdateRequest.getLevel());
         existingRecipe.setCategory(categoryEntity);
         existingRecipe.setCuisine(cuisineEntity);
         existingRecipe.setUpdatedAt(LocalDateTime.now());
 
-        // Update ingredients and cooking steps (same as before)
-        List<Ingredient> ingredients = foodRecipeRequest.getIngredients();
-        List<CookingStep> cookingSteps = foodRecipeRequest.getCookingSteps();
-        long ingredientIdCounter = 1L;
-        for (Ingredient ingredient : ingredients) {
-            if (ingredient.getId() == null || ingredient.getId() == 0) {
-                ingredient.setId(ingredientIdCounter++);
-            }
-        }
 
-        long cookingStepIdCounter = 1L;
-        for (CookingStep cookingStep : cookingSteps) {
-            if (cookingStep.getId() == null || cookingStep.getId() == 0) {
-                cookingStep.setId(cookingStepIdCounter++);
-            }
-        }
-        existingRecipe.setIngredients(ingredients);
-        existingRecipe.setCookingSteps(cookingSteps);
+        // Initialize counters using an array for mutability within lambda
+        long[] ingredientIdCounter = { existingRecipe.getIngredients().stream()
+                .mapToLong(Ingredient::getId)
+                .max()
+                .orElse(0L) + 1 };
+        long[] cookingStepIdCounter = { existingRecipe.getCookingSteps().stream()
+                .mapToLong(CookingStep::getId)
+                .max()
+                .orElse(0L) + 1 };
+
+        // Update or create new ingredients
+        List<Ingredient> updatedIngredients = foodRecipeUpdateRequest.getIngredients().stream()
+                .map(req -> {
+                    Ingredient ingredient = modelMapper.map(req, Ingredient.class);
+                    if (ingredient.getId() != null && ingredient.getId() > 0) {
+                        // Update existing ingredient if found
+                        return existingRecipe.getIngredients().stream()
+                                .filter(existingIngredient -> existingIngredient.getId().equals(ingredient.getId()))
+                                .findFirst()
+                                .map(existingIngredient -> {
+                                    if (ingredient.getName() != null) existingIngredient.setName(ingredient.getName());
+                                    if (ingredient.getQuantity() != null) existingIngredient.setQuantity(ingredient.getQuantity());
+                                    if (ingredient.getPrice() != null) existingIngredient.setPrice(ingredient.getPrice());
+                                    return existingIngredient;
+                                })
+                                .orElseGet(() -> {
+                                    // If not found, treat as a new entry with a new ID
+                                    ingredient.setId(ingredientIdCounter[0]++);
+                                    return ingredient;
+                                });
+                    } else {
+                        // New entry with a new ID
+                        ingredient.setId(ingredientIdCounter[0]++);
+                        return ingredient;
+                    }
+                })
+                .collect(Collectors.toList());
+        existingRecipe.setIngredients(updatedIngredients);
+
+        // Update or create new cooking steps
+        List<CookingStep> updatedCookingSteps = foodRecipeUpdateRequest.getCookingSteps().stream()
+                .map(req -> {
+                    CookingStep step = modelMapper.map(req, CookingStep.class);
+                    if (step.getId() != null && step.getId() > 0) {
+                        // Update existing cooking step if found
+                        return existingRecipe.getCookingSteps().stream()
+                                .filter(existingStep -> existingStep.getId().equals(step.getId()))
+                                .findFirst()
+                                .map(existingStep -> {
+                                    if (step.getDescription() != null) existingStep.setDescription(step.getDescription());
+                                    return existingStep;
+                                })
+                                .orElseGet(() -> {
+                                    // If not found, treat as a new entry with a new ID
+                                    step.setId(cookingStepIdCounter[0]++);
+                                    return step;
+                                });
+                    } else {
+                        // New entry with a new ID
+                        step.setId(cookingStepIdCounter[0]++);
+                        return step;
+                    }
+                })
+                .collect(Collectors.toList());
+        existingRecipe.setCookingSteps(updatedCookingSteps);
 
         // Handle photo updates
         Map<Long, PhotoEntity> existingPhotosMap = existingRecipe.getPhotos().stream()
                 .collect(Collectors.toMap(PhotoEntity::getId, photo -> photo));  // Store existing photos in a map
 
-        List<PhotoEntity> updatedPhotos = foodRecipeRequest.getPhoto().stream()
+        List<PhotoEntity> updatedPhotos = foodRecipeUpdateRequest.getPhoto().stream()
                 .map(photoEntity -> {
                     if (photoEntity.getId() != null && existingPhotosMap.containsKey(photoEntity.getId())) {
                         // Update existing photo
@@ -334,12 +392,26 @@ public class FoodRecipeServiceImpl implements FoodRecipeService {
     @Override
     public BaseResponse<?> getFoodRecipeByCuisineID(Long cuisineId) {
 
+        // Check if the cuisineId exists in the database
+        boolean cuisineExists = cuisineRepository.existsById(cuisineId);
+        if (!cuisineExists) {
+            throw new NotFoundExceptionHandler("Cuisine ID " + cuisineId + " not found.");
+        }
+
         // Get the currently authenticated user
         UserEntity currentUser = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         log.info("User authenticated: {}", currentUser.getEmail());
 
         // Fetch FoodRecipe entities by Cuisine ID
         List<FoodRecipeEntity> foodRecipeEntities = foodRecipeRepository.findByCuisineId(cuisineId);
+
+        if (foodRecipeEntities.isEmpty()) {
+            log.error("No food recipes found for cuisine ID {}", cuisineId);
+            return BaseResponse.builder()
+                    .message("No food recipes found for the specified cuisine ID")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
 
         // Fetch the user's favorite recipes
         List<FavoriteEntity> userFavorites = favoriteRepository.findByUserAndFoodRecipeIsNotNull(currentUser);
@@ -387,7 +459,10 @@ public class FoodRecipeServiceImpl implements FoodRecipeService {
 
         // Check if no records were found for the provided name
         if (foodRecipes.isEmpty()) {
-            throw new NotFoundExceptionHandler("No foods found for the specified name.");
+            return BaseResponse.builder()
+                    .message("No food recipes found matching the provided name. Please try with a different search term.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Retrieve user's favorite recipe IDs

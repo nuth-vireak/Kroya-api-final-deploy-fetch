@@ -8,6 +8,7 @@ import com.kshrd.kroya_api.entity.UserEntity;
 import com.kshrd.kroya_api.enums.PurchaseStatusType;
 import com.kshrd.kroya_api.exception.FutureDateException;
 import com.kshrd.kroya_api.exception.InvalidDateFormatException;
+import com.kshrd.kroya_api.exception.NotFoundExceptionHandler;
 import com.kshrd.kroya_api.payload.BaseResponse;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellCardResponse;
 import com.kshrd.kroya_api.payload.Purchase.PurchaseResponse;
@@ -51,7 +52,7 @@ public class SaleReportServiceImpl implements SaleReportService {
             throw new InvalidDateFormatException("Invalid date format. Please use yyyy-MM-dd.");
         }
 
-// Validate that the selected date is not after today
+        // Validate that the selected date is not after today
         LocalDate today = LocalDate.now();
         if (selectedDate.isAfter(today)) {
             throw new FutureDateException("Selected date cannot be in the future.");
@@ -70,11 +71,9 @@ public class SaleReportServiceImpl implements SaleReportService {
 
         if (userFoodSellIds.isEmpty()) {
             log.info("No food items found for the current user: {}", currentUser.getEmail());
-            return BaseResponse.builder()
-                    .message("No food items found for the current user.")
-                    .statusCode(String.valueOf(HttpStatus.OK.value()))
-                    .payload(Collections.emptyList())
-                    .build();
+//            throw new NotFoundExceptionHandler("No food items found for the current user.");
+        } else {
+            log.info("Found {} food items for the current user: {}", userFoodSellIds.size(), currentUser.getEmail());
         }
 
         // Retrieve all accepted purchases for the specified date and user’s food items
@@ -97,6 +96,11 @@ public class SaleReportServiceImpl implements SaleReportService {
                 .filter(purchase -> purchase.getPurchaseStatusType() == PurchaseStatusType.ACCEPTED)
                 .toList();
 
+//        if (purchasesInMonth.isEmpty()) {
+//            log.info("No purchases found for the selected month.");
+//            throw new NotFoundExceptionHandler("No purchases found for the selected month.");
+//        }
+
         // Calculate total sales and orders for the specified date
         double totalSalesForDate = purchasesOnDate.stream().mapToDouble(PurchaseEntity::getTotalPrice).sum();
         int totalOrdersForDate = purchasesOnDate.size();
@@ -107,17 +111,43 @@ public class SaleReportServiceImpl implements SaleReportService {
         // Calculate total sales for the entire month
         double totalSalesForMonth = purchasesInMonth.stream().mapToDouble(PurchaseEntity::getTotalPrice).sum();
 
-        // Create SaleReportSummaryResponse for the specified date
-        SaleReportSummaryResponse reportSummaryForDate = SaleReportSummaryResponse.builder()
-                .totalSales(totalSalesForDate)
-                .totalOrders(totalOrdersForDate)
-                .purchaseResponses(purchaseResponsesForDate)
-                .build();
+        // Create SaleReportFlexibleResponse for the specified date
+        SaleReportSummaryResponse reportSummaryForDate;
+        if (purchasesOnDate.isEmpty()) {
+            reportSummaryForDate = SaleReportSummaryResponse.builder()
+                    .totalSales(totalSalesForDate)
+                    .totalOrders(totalOrdersForDate)
+                    .message("No Items sold on this day")
+                    .build();
+        } else {
+            reportSummaryForDate = SaleReportSummaryResponse.builder()
+                    .totalSales(totalSalesForDate)
+                    .totalOrders(totalOrdersForDate)
+                    .purchaseResponses(purchaseResponsesForDate)
+                    .build();
+        }
+
+//        // Create SaleReportSummaryResponse for the specified date
+//        SaleReportSummaryResponse reportSummaryForDate = SaleReportSummaryResponse.builder()
+//                .totalSales(totalSalesForDate)
+//                .totalOrders(totalOrdersForDate)
+//                .purchaseResponses(purchaseResponsesForDate)
+//                .build();
 
         // Build the complete response including both the date and month summaries
         Map<String, Object> responseMap = new HashMap<>();
         responseMap.put("dailySaleReport", reportSummaryForDate);
         responseMap.put("totalMonthlySales", totalSalesForMonth);
+
+        // Throw NotFoundExceptionHandler if no data is found for the specified date
+        if (totalSalesForDate == 0 && totalOrdersForDate == 0) {
+            log.info("No sales data found for the selected date: {}", selectedDate);
+            return BaseResponse.builder()
+                    .message("No items sold on the selected date: " + selectedDate)
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .payload(responseMap)
+                    .build();
+        }
 
         return BaseResponse.builder()
                 .message("Sales report for date: " + selectedDate + " successfully")

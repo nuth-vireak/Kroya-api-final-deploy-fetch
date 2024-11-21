@@ -12,6 +12,7 @@ import com.kshrd.kroya_api.repository.Address.AddressRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -74,6 +75,14 @@ public class AddressServiceImpl implements AddressService {
 //        // Find addresses by the current user's ID
         List<AddressEntity> addresses = addressRepository.findAllByUserId(currentUser.getId());
 
+        if (addresses.isEmpty()) {
+            log.warn("No addresses found for user: {}", currentUser.getEmail());
+            return BaseResponse.builder()
+                    .message("No addresses found for the current user. Please add an address and try again.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
+
         // Map to response format
         List<AddressResponse> addressResponses = addresses.stream()
                 .map(address -> modelMapper.map(address, AddressResponse.class))
@@ -82,7 +91,7 @@ public class AddressServiceImpl implements AddressService {
         return BaseResponse.builder()
                 .payload(addressResponses)
                 .message("Addresses fetched successfully")
-                .statusCode("200")
+                .statusCode(String.valueOf(HttpStatus.OK.value()))
                 .build();
     }
 

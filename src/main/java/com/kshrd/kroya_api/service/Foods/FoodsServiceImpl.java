@@ -17,6 +17,7 @@ import com.kshrd.kroya_api.payload.FoodRecipe.FoodRecipeCardResponse;
 import com.kshrd.kroya_api.payload.FoodRecipe.FoodRecipeResponse;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellCardResponse;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellResponse;
+import com.kshrd.kroya_api.repository.Category.CategoryRepository;
 import com.kshrd.kroya_api.repository.Favorite.FavoriteRepository;
 import com.kshrd.kroya_api.repository.Feedback.FeedbackRepository;
 import com.kshrd.kroya_api.repository.FoodRecipe.FoodRecipeRepository;
@@ -48,6 +49,7 @@ public class FoodsServiceImpl implements FoodsService {
     private final FavoriteRepository favoriteRepository;
     private final ModelMapper modelMapper;
     private final FeedbackRepository feedbackRepository;
+    private final CategoryRepository categoryRepository;
 
     // Get all food by category ID
     @Override
@@ -55,6 +57,11 @@ public class FoodsServiceImpl implements FoodsService {
         // Validate the categoryId to ensure it's not null and is positive
         if (categoryId == null || categoryId <= 0) {
             throw new FieldBlankExceptionHandler("Category ID must be a positive number and cannot be null.");
+        }
+
+        // check if category exists in database
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new NotFoundExceptionHandler("Category with ID " + categoryId + " not found.");
         }
 
         // Get the currently authenticated user
@@ -82,7 +89,10 @@ public class FoodsServiceImpl implements FoodsService {
 
         // Check if no records were found for the provided categoryId
         if (foodRecipes.isEmpty() && foodSells.isEmpty()) {
-            throw new NotFoundExceptionHandler("No foods found for the specified category ID.");
+            return BaseResponse.builder()
+                    .message("No foods found for the specified category ID.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Get the current time in Phnom Penh time zone (UTC+7)
@@ -284,6 +294,13 @@ public class FoodsServiceImpl implements FoodsService {
                 })
                 .collect(Collectors.toList());
 
+        if (popularRecipeResponses.isEmpty() && popularSellResponses.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("No popular foods found.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
+
         // Prepare response map
         Map<String, List<?>> responseMap = new HashMap<>();
         responseMap.put("popularRecipes", popularRecipeResponses);
@@ -481,7 +498,10 @@ public class FoodsServiceImpl implements FoodsService {
 
         // Check if no records were found for the provided name
         if (foodRecipes.isEmpty() && foodSells.isEmpty()) {
-            throw new NotFoundExceptionHandler("No foods found for the specified name.");
+            return BaseResponse.builder()
+                    .message("No foods found for the specified name.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Retrieve user's favorite recipe and food sell IDs
@@ -572,7 +592,10 @@ public class FoodsServiceImpl implements FoodsService {
 
         // Validate if there are no food recipes
         if (foodRecipes.isEmpty()) {
-            throw new NotFoundExceptionHandler("No food recipes found.");
+            return BaseResponse.builder()
+                    .message("No food recipes found.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Fetch all food sells

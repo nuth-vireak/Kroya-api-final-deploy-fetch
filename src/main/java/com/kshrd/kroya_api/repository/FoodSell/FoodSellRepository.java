@@ -2,6 +2,8 @@ package com.kshrd.kroya_api.repository.FoodSell;
 
 import com.kshrd.kroya_api.entity.FoodRecipeEntity;
 import com.kshrd.kroya_api.entity.FoodSellEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -44,4 +46,9 @@ public interface FoodSellRepository extends JpaRepository<FoodSellEntity, Long> 
     List<FoodSellEntity> findByFoodRecipe_User_Id(Integer id);
 
     Collection<Object> findByFoodRecipe_User_IdAndFoodRecipe_NameContainingIgnoreCase(Integer userId, String name);
+
+    boolean existsByIdAndFoodRecipe_User_Id(Long foodSellId, Integer id);
+
+    Page<FoodSellEntity> findByFoodRecipeUserId(Integer userId, Pageable pageable);
+
 }

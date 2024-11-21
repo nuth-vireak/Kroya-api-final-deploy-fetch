@@ -8,6 +8,7 @@ import com.kshrd.kroya_api.enums.ItemType;
 import com.kshrd.kroya_api.enums.PaymentType;
 import com.kshrd.kroya_api.enums.PurchaseStatusType;
 import com.kshrd.kroya_api.exception.FieldEmptyExceptionHandler;
+import com.kshrd.kroya_api.exception.NotFoundExceptionHandler;
 import com.kshrd.kroya_api.payload.BaseResponse;
 import com.kshrd.kroya_api.payload.FoodSell.BuyerOrderCardResponse;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellCardResponse;
@@ -186,6 +187,12 @@ public class PurchaseServiceImpl implements PurchaseService {
 
         UserEntity seller = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
+        // Check if the foodSellId exists and belongs to the authenticated seller
+        boolean foodSellExists = foodSellRepository.existsByIdAndFoodRecipe_User_Id(foodSellId, seller.getId());
+        if (!foodSellExists) {
+            throw new NotFoundExceptionHandler("FoodSell with ID " + foodSellId + " not found for the authenticated seller.");
+        }
+
 //        List<PurchaseEntity> orders = purchaseRepository.findByFoodSell_FoodRecipe_User_Id(seller.getId());
 
         // Fetch orders for the specific foodSellId sold by the authenticated seller
@@ -233,6 +240,13 @@ public class PurchaseServiceImpl implements PurchaseService {
                     .build();
         }).toList();
 
+        if (orderResponses.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("No orders found for the given foodSellId")
+                    .statusCode(String.valueOf(HttpStatus.NO_CONTENT.value()))
+                    .build();
+        }
+
         return BaseResponse.builder()
                 .message("Order requests retrieved successfully")
                 .statusCode(String.valueOf(HttpStatus.OK.value()))
@@ -244,6 +258,13 @@ public class PurchaseServiceImpl implements PurchaseService {
     public BaseResponse<?> getOrdersForBuyer() {
         UserEntity buyer = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         List<PurchaseEntity> orders = purchaseRepository.findByBuyer_Id(buyer.getId());
+
+        if (orders.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("You have no orders placed at the moment.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
 
         List<BuyerOrderCardResponse> orderResponses = orders.stream().map(order -> {
             FoodSellEntity product = order.getFoodSell();
@@ -339,7 +360,7 @@ public class PurchaseServiceImpl implements PurchaseService {
         }
         if (newStatus == PurchaseStatusType.REJECTED) {
             descriptionForBuyer = String.format("%s rejected your order. You can order again later.", seller.getFullName());
-        } 
+        }
         if (newStatus == PurchaseStatusType.PENDING) {
             descriptionForBuyer = String.format("Your order is pending. %s will review it soon.", seller.getFullName());
         }
@@ -380,6 +401,14 @@ public class PurchaseServiceImpl implements PurchaseService {
 
         // Fetch all food items sold by the seller
         List<FoodSellEntity> sellerItems = foodSellRepository.findByFoodRecipe_User_Id(seller.getId());
+
+        // Check if the seller has any items
+        if (sellerItems.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("You have no items listed for sale at the moment. Please add items to your store.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
 
         // Map each food item to SellerOrderCardResponse including order count
         List<SellerOrderCardResponse> responses = sellerItems.stream().map(item -> {
@@ -459,6 +488,13 @@ public class PurchaseServiceImpl implements PurchaseService {
                 })
                 .collect(Collectors.toList());
 
+        if (saleItems.isEmpty() && orderItems.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("No items found for the current user. Please check back later.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
+
         // Combine both SALE and ORDER items into a single list
         responses.addAll(saleItems);
         responses.addAll(orderItems);
@@ -530,6 +566,14 @@ public class PurchaseServiceImpl implements PurchaseService {
                 })
                 .toList();
         responses.addAll(orderItems);
+
+        // Throw NotFoundException if no results found
+        if (responses.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("No results found for your search. Please try again with different keywords.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
 
         // Return the search results as a response
         return BaseResponse.builder()

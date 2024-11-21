@@ -155,8 +155,41 @@ public class BankServiceImpl implements BankService {
 
         if (bankEntityOptional.isEmpty()) {
             return BaseResponse.builder()
-                    .message("Bank account not found for the current user")
-                    .statusCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
+                    .message("No bank account found for the current user. Please ensure your account details are correctly provided.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
+
+        BankEntity bankEntity = bankEntityOptional.get();
+
+        // Map UserEntity to UserDTO
+        UserDTO userDTO = new UserDTO(
+                bankEntity.getUser().getId(),
+                bankEntity.getUser().getFullName(),
+                bankEntity.getUser().getProfileImage()
+        );
+
+        // Build a response payload map including BankEntity and UserDTO
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("bank", bankEntity);
+        payload.put("user", userDTO);
+
+        return BaseResponse.builder()
+                .message("Bank account fetched successfully")
+                .statusCode(String.valueOf(HttpStatus.OK.value()))
+                .payload(payload)
+                .build();
+    }
+
+    @Override
+    public BaseResponse<?> getBankByUserId(Integer userId) {
+        // Fetch the bank entity based on the current user's ID
+        Optional<BankEntity> bankEntityOptional = bankRepository.findByUserId(userId);
+
+        if (bankEntityOptional.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("No bank account found for the current user. Please ensure your account details are correctly provided.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
                     .build();
         }
 

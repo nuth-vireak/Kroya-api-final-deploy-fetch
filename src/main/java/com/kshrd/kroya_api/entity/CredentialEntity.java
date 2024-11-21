@@ -21,6 +21,8 @@ public class CredentialEntity {
     private String clientId;
     @Column(name = "client_secret")
     private String clientSecret;
+    @Column(name = "account_no")
+    private String accountNo;
     @OneToOne
     @JoinColumn(name = "user_id")
     @JsonIgnore

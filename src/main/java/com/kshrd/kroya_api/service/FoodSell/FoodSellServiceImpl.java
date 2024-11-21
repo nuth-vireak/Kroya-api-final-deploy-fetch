@@ -14,6 +14,7 @@ import com.kshrd.kroya_api.payload.FoodRecipe.FoodRecipeCardResponse;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellCardResponse;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellRequest;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellResponse;
+import com.kshrd.kroya_api.repository.Cuisine.CuisineRepository;
 import com.kshrd.kroya_api.repository.Favorite.FavoriteRepository;
 import com.kshrd.kroya_api.repository.FoodRecipe.FoodRecipeRepository;
 import com.kshrd.kroya_api.repository.FoodSell.FoodSellRepository;
@@ -47,6 +48,7 @@ public class FoodSellServiceImpl implements FoodSellService {
     private final FavoriteRepository favoriteRepository;
     private final ModelMapper modelMapper;
     private final Validation validation;
+    private final CuisineRepository cuisineRepository;
 
     @Override
     public BaseResponse<?> createFoodSell(FoodSellRequest foodSellRequest, Long foodRecipeId, CurrencyType currencyType) {
@@ -144,6 +146,14 @@ public class FoodSellServiceImpl implements FoodSellService {
 
         // Fetch all FoodSellEntity records from the database
         List<FoodSellEntity> foodSellEntities = foodSellRepository.findAll();
+
+        if (foodSellEntities.isEmpty()) {
+            log.error("No FoodSell records found");
+            return BaseResponse.builder()
+                    .message("No food listings found at this time. Please check back later.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
 
         // Fetch the user's favorite sell items
         List<FavoriteEntity> userFavorites = favoriteRepository.findByUserAndFoodSellIsNotNull(currentUser);
@@ -295,12 +305,26 @@ public class FoodSellServiceImpl implements FoodSellService {
     @Override
     public BaseResponse<?> getFoodSellByCuisineID(Long cuisineId) {
 
+        // Check if the cuisineId exists in the database
+        boolean cuisineExists = cuisineRepository.existsById(cuisineId);
+        if (!cuisineExists) {
+            throw new NotFoundExceptionHandler("Cuisine ID " + cuisineId + " not found.");
+        }
+
         // Get the currently authenticated user
         UserEntity currentUser = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         log.info("User authenticated: {}", currentUser.getEmail());
 
         // Fetch FoodSell entities by Cuisine ID
         List<FoodSellEntity> foodSellEntities = foodSellRepository.findByCuisineId(cuisineId);
+
+        // Check if there are no FoodSell entities for this cuisineId
+        if (foodSellEntities.isEmpty()) {
+            return BaseResponse.builder()
+                    .message("No FoodSell records found for the specified cuisine ID")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
+        }
 
         // Fetch the user's favorite sell items
         List<FavoriteEntity> userFavorites = favoriteRepository.findByUserAndFoodSellIsNotNull(currentUser);
@@ -390,7 +414,10 @@ public class FoodSellServiceImpl implements FoodSellService {
 
         // Check if no records were found for the provided name
         if (foodSells.isEmpty()) {
-            throw new NotFoundExceptionHandler("No foods found for the specified name.");
+            return BaseResponse.builder()
+                    .message("No foods found matching the specified name. Please try again with a different search term.")
+                    .statusCode(String.valueOf(HttpStatus.OK.value()))
+                    .build();
         }
 
         // Retrieve user's favorite recipe and food sell IDs

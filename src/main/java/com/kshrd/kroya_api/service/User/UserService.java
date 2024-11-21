@@ -5,7 +5,8 @@ import com.kshrd.kroya_api.payload.Auth.UserProfileUpdateRequest;
 import com.kshrd.kroya_api.payload.BaseResponse;
 
 public interface UserService {
-    BaseResponse<?> getFoodsByCurrentUser();
+
+    BaseResponse<?> getFoodsByCurrentUser(int page, int size);
 
     BaseResponse<?> getFoodsByUserId(Integer userId);
 

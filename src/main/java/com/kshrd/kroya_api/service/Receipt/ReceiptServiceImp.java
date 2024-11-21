@@ -35,7 +35,7 @@ public class ReceiptServiceImp implements ReceiptService {
 
         // Retrieve the purchase and check if it belongs to the authenticated user
         PurchaseEntity purchase = purchaseRepository.findById(purchaseId)
-                .orElseThrow(() -> new NotFoundExceptionHandler("Purchase not found!"));
+                .orElseThrow(() -> new NotFoundExceptionHandler("Purchase not found with purchase ID: " + purchaseId));
 
         FoodSellEntity product = purchase.getFoodSell();
         UserEntity seller = product.getFoodRecipe().getUser();

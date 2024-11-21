@@ -1,5 +1,6 @@
 package com.kshrd.kroya_api.payload.SaleReport;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.kshrd.kroya_api.payload.Purchase.PurchaseResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +16,9 @@ import java.util.List;
 public class SaleReportSummaryResponse {
     private double totalSales;
     private int totalOrders;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<PurchaseResponse> purchaseResponses;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String message;
 }
 
