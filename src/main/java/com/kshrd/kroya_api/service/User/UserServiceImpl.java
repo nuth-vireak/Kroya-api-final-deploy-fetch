@@ -323,19 +323,14 @@ public class UserServiceImpl implements UserService {
                     FoodSellCardResponse response = modelMapper.map(sell, FoodSellCardResponse.class);
 
                     try {
-                        // Parse the dateCooking using the flexible DateTimeFormatter
+                        // Parse the dateCooking using the ISO_LOCAL_DATE_TIME formatter
                         LocalDateTime dateCooking = LocalDateTime.parse(sell.getDateCooking().toString(), formatter);
 
                         // Convert LocalDateTime to ZonedDateTime in Phnom Penh time zone
                         ZonedDateTime dateCookingZoned = dateCooking.atZone(ZoneId.of("Asia/Phnom_Penh"));
-                        log.info("dateCookingZoned: {}", dateCookingZoned);
 
                         // Update isOrderable based on whether dateCooking is expired or not
-                        if (dateCookingZoned.isBefore(currentDateTimeInPhnomPenh)) {
-                            sell.setIsOrderable(false);
-                        } else {
-                            sell.setIsOrderable(true);
-                        }
+                        sell.setIsOrderable(!dateCookingZoned.isBefore(currentDateTimeInPhnomPenh));
 
                         // Save the updated isOrderable value to the database
                         foodSellRepository.save(sell);
@@ -346,6 +341,9 @@ public class UserServiceImpl implements UserService {
 
                     // Set isFavorite based on user's favorite food sells
                     response.setIsFavorite(userFavoriteFoodSellIds.contains(sell.getId()));
+
+                    // Set foodSellId explicitly
+                    response.setFoodSellId(sell.getId());
 
                     // Map photos from the associated FoodRecipeEntity
                     List<PhotoDTO> photoDTOs = sell.getFoodRecipe().getPhotos().stream()
@@ -359,17 +357,32 @@ public class UserServiceImpl implements UserService {
                     response.setTotalRaters(sell.getFoodRecipe().getTotalRaters());
                     response.setIsOrderable(sell.getIsOrderable());
 
+                    // Map seller information from FoodRecipeEntity's user
+                    UserEntity seller = sell.getFoodRecipe().getUser();
+                    UserProfileDTO sellerInfo = UserProfileDTO.builder()
+                            .userId(Long.valueOf(seller.getId()))
+                            .fullName(seller.getFullName())
+                            .phoneNumber(seller.getPhoneNumber())
+                            .profileImage(seller.getProfileImage())
+                            .location(seller.getLocation())
+                            .build();
+                    response.setSellerInformation(sellerInfo);
+
                     return response;
                 })
                 .collect(Collectors.toList());
 
         // Prepare response payload
         Map<String, Object> profileData = new LinkedHashMap<>();
+        profileData.put("fullName", user.getFullName());
+        profileData.put("email", user.getEmail());
+        profileData.put("profileImage", user.getProfileImage());
         profileData.put("totalFoodRecipes", totalFoodRecipes);
         profileData.put("totalFoodSells", totalFoodSells);
         profileData.put("totalPosts", totalPosts);  // Total posts (recipes + sells)
         profileData.put("foodRecipes", recipeResponses);
         profileData.put("foodSells", sellResponses);
+
 
         // Return the response
         return BaseResponse.builder()

@@ -34,16 +34,15 @@ public class FeedbackController {
     @PostMapping
     public BaseResponse<FeedbackResponse> addFeedback(@Valid @RequestBody FeedbackRequest feedbackRequest,
                                                       @RequestParam ItemType itemType) {
-
-        try {
-            int ratingValue = Integer.parseInt(feedbackRequest.getRatingValue());
-            if (ratingValue < 1 || ratingValue > 5) {
-                throw new InvalidValueExceptionHandler("Rating must be a whole integer between 1 and 5.");
-            }
-            feedbackRequest.setRatingValue(Integer.toString(ratingValue));
-        } catch (NumberFormatException ex) {
-            throw new InvalidValueExceptionHandler("Rating must be a whole integer between 1 and 5.");
-        }
+//        int ratingValue = Integer.parseInt(feedbackRequest.getRatingValue());
+//        try {
+//            if (ratingValue < 1 || ratingValue > 5) {
+//                throw new InvalidValueExceptionHandler("Rating must be a whole integer between 1 and 5.");
+//            }
+//            feedbackRequest.setRatingValue(Integer.toString(ratingValue));
+//        } catch (NumberFormatException ex) {
+//            throw new InvalidValueExceptionHandler("Rating must be a whole integer between 1 and 5.");
+//        }
 
         return feedbackService.addFeedback(feedbackRequest, itemType);
     }
@@ -67,15 +66,15 @@ public class FeedbackController {
     @PutMapping("/{feedbackId}")
     public BaseResponse<FeedbackResponse> updateFeedback(@PathVariable Long feedbackId,
                                                          @Valid @RequestBody FeedbackRequest feedbackRequest) {
-        try {
-            int ratingValue = Integer.parseInt(feedbackRequest.getRatingValue());
-            if (ratingValue < 1 || ratingValue > 5) {
-                throw new InvalidValueExceptionHandler("Rating must be a whole integer between 1 and 5.");
-            }
-            feedbackRequest.setRatingValue(Integer.toString(ratingValue));
-        } catch (NumberFormatException ex) {
-            throw new InvalidValueExceptionHandler("Rating must be a whole integer between 1 and 5.");
-        }
+//        try {
+//            int ratingValue = Integer.parseInt(feedbackRequest.getRatingValue());
+//            if (ratingValue < 1 || ratingValue > 5) {
+//                throw new InvalidValueExceptionHandler("Rating must be a whole integer between 1 and 5.");
+//            }
+//            feedbackRequest.setRatingValue(Integer.toString(ratingValue));
+//        } catch (NumberFormatException ex) {
+//            throw new InvalidValueExceptionHandler("Rating must be a whole integer between 1 and 5.");
+//        }
 
         return feedbackService.updateFeedback(feedbackId, feedbackRequest);
     }

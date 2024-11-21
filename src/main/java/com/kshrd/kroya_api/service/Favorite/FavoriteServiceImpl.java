@@ -25,6 +25,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoField;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -265,11 +268,23 @@ public class FavoriteServiceImpl implements FavoriteService {
                     response.setTotalRaters(linkedRecipe.getTotalRaters());
                     response.setIsFavorite(true);
 
-                    // Parse the dateCooking to LocalDateTime using the correct formatter
-                    LocalDateTime dateCooking = LocalDateTime.parse(
-                            favorite.getFoodSell().getDateCooking().toString(),
-                            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
-                    );
+                    DateTimeFormatter formatter = new DateTimeFormatterBuilder()
+                            .appendPattern("yyyy-MM-dd'T'HH:mm") // Base pattern for hours and minutes
+                            .optionalStart()
+                            .appendPattern(":ss") // Optional seconds pattern
+                            .optionalEnd()
+                            .optionalStart()
+                            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true) // Optional fractional seconds
+                            .optionalEnd()
+                            .toFormatter();
+
+                    LocalDateTime dateCooking;
+                    try {
+                        dateCooking = LocalDateTime.parse(favorite.getFoodSell().getDateCooking().toString(), formatter);
+                    } catch (DateTimeParseException e) {
+                        log.error("Failed to parse dateCooking: {}", favorite.getFoodSell().getDateCooking(), e);
+                        dateCooking = LocalDateTime.now(); // Fallback to current date-time
+                    }
 
                     // Convert LocalDateTime to ZonedDateTime in Phnom Penh time zone
                     ZonedDateTime dateCookingZoned = dateCooking.atZone(ZoneId.of("Asia/Phnom_Penh"));
