@@ -125,9 +125,9 @@ public class UserController {
                     - **404**: 🚫 User or credentials not found.
                     """
     )
-    @GetMapping("/credential/{userId}")
-    public BaseResponse<?> getCredentialByUserId(@PathVariable("userId") Integer userId) {
-        return userService.getCredentialByUserId(userId);
+    @GetMapping("/webill-acc-no/{userId}")
+    public BaseResponse<?> getWebillAccNoByUserId(@PathVariable("userId") Integer userId) {
+        return userService.getWebillAccNoByUserId(userId);
     }
 
     @Operation(

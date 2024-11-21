@@ -6,11 +6,13 @@ import com.kshrd.kroya_api.dto.UserEntityDTO;
 import com.kshrd.kroya_api.dto.UserProfileDTO;
 import com.kshrd.kroya_api.entity.*;
 import com.kshrd.kroya_api.entity.token.TokenRepository;
+import com.kshrd.kroya_api.exception.DuplicateFieldExceptionHandler;
 import com.kshrd.kroya_api.exception.NotFoundExceptionHandler;
 import com.kshrd.kroya_api.exception.constand.FieldBlankExceptionHandler;
 import com.kshrd.kroya_api.exception.exceptionValidateInput.Validation;
 import com.kshrd.kroya_api.payload.Auth.UserProfileUpdateRequest;
 import com.kshrd.kroya_api.payload.BaseResponse;
+import com.kshrd.kroya_api.payload.Credential.CredentialResponse;
 import com.kshrd.kroya_api.payload.FoodRecipe.FoodRecipeCardResponse;
 import com.kshrd.kroya_api.payload.FoodSell.FoodSellCardResponse;
 import com.kshrd.kroya_api.payload.User.UserResponse;
@@ -434,7 +436,7 @@ public class UserServiceImpl implements UserService {
         // Ensure required fields are present
         validation.validateNotBlank(credentialEntity.getClientId(), "Client ID");
         validation.validateNotBlank(credentialEntity.getClientSecret(), "Client Secret");
-
+        validation.validateNotBlank(credentialEntity.getAccountNo(), "Account Number");
 
         UserEntity auth = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Integer userId = auth.getId();
@@ -442,6 +444,12 @@ public class UserServiceImpl implements UserService {
         // Validate the existence of the user
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundExceptionHandler("User not found!"));
+
+        // Check if the user already has connected credentials
+        CredentialEntity existingCredential = credentialRepository.findByUserId(userId);
+        if (existingCredential != null) {
+            throw new DuplicateFieldExceptionHandler("User already has connected Webill credentials!");
+        }
 
         // Check if the user already has connected credentials
         CredentialEntity credential = credentialRepository.findByUserId(userId);
@@ -454,6 +462,7 @@ public class UserServiceImpl implements UserService {
         // Set and save the updated credentials
         credential.setClientId(credentialEntity.getClientId());
         credential.setClientSecret(credentialEntity.getClientSecret());
+        credential.setAccountNo(credentialEntity.getAccountNo());
         credentialRepository.save(credential);
 
         log.info("Webill account connected successfully for user ID: {}", userId);
@@ -461,7 +470,7 @@ public class UserServiceImpl implements UserService {
         return BaseResponse.builder()
                 .message("Connected Webill successfully!")
                 .statusCode(String.valueOf(HttpStatus.OK.value()))
-                .payload(modelMapper.map(user, UserDTO.class))
+                .payload(credential)
                 .build();
     }
 
@@ -487,24 +496,30 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public BaseResponse<?> getCredentialByUserId(Integer userId) {
+    public BaseResponse<?> getWebillAccNoByUserId(Integer userId) {
         // Validate that userId is not null
         if (userId == null) {
             throw new IllegalArgumentException("User ID cannot be null.");
         }
 
         // Retrieve credentials for the user
-        Optional<CredentialEntity> credentialsOptional = Optional.ofNullable(credentialRepository.findByUserId(userId));
+        CredentialEntity credential = credentialRepository.findByUserId(userId);
 
-        // Check if credentials are present, else throw an exception
-        if (credentialsOptional.isEmpty()) {
+        // Check if credentials are present
+        if (credential == null) {
             throw new NotFoundExceptionHandler("Credentials not found for the provided user ID.");
         }
 
+        // Map CredentialEntity to CredentialResponse
+        CredentialResponse response = new CredentialResponse();
+        response.setId(credential.getId().intValue()); // Cast Long to Integer
+        response.setAccountNo(credential.getAccountNo());
+        response.setUserId(credential.getUser() != null ? credential.getUser().getId() : null);
+
         return BaseResponse.builder()
-                .message("Credentials fetched successfully")
+                .message("Webill account details fetched successfully")
                 .statusCode(String.valueOf(HttpStatus.OK.value()))
-                .payload(credentialsOptional.get())
+                .payload(response)
                 .build();
     }
 

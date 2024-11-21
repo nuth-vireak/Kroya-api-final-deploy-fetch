@@ -17,7 +17,7 @@ public interface UserService {
 
     BaseResponse<?> disconnectWebill();
 
-    BaseResponse<?> getCredentialByUserId(Integer userId);
+    BaseResponse<?> getWebillAccNoByUserId(Integer userId);
 
     BaseResponse<?> getDeviceTokenByUserId(Integer userId);
 
