@@ -29,7 +29,7 @@ public class NotificationServiceImp implements NotificationService {
     private final UserRepository userRepository;
 
     @Override
-    public BaseResponse<?> getNotification(Integer pageNumber, Integer pageSize) {
+    public BaseResponse<?> getNotification() {
 
         UserEntity auth = (UserEntity) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Integer receiverId = auth.getId();
@@ -38,10 +38,8 @@ public class NotificationServiceImp implements NotificationService {
         UserEntity userReceiver = userRepository.findById(receiverId)
                 .orElseThrow(() -> new FieldEmptyExceptionHandler("Receiver is not found!"));
 
-        // Fetch paginated notifications for the user
-        PageRequest pageRequest = PageRequest.of(pageNumber - 1, pageSize);
         List<NotificationEntity> notifications = notificationRepository
-                .findByReceiverOrderByCreatedDateDesc(userReceiver, pageRequest);
+                .findByReceiverOrderByCreatedDateDesc(userReceiver);
 
         if (notifications.isEmpty()) {
             throw new NotFoundExceptionHandler("No record");

@@ -30,8 +30,8 @@ public class NotificationController {
                     """
     )
     @GetMapping("")
-    public BaseResponse<?> getNotification(@RequestParam Integer pageNumber, @RequestParam Integer pageSize) {
-        return notificationService.getNotification(pageNumber, pageSize);
+    public BaseResponse<?> getNotification() {
+        return notificationService.getNotification();
     }
 
     @Operation(

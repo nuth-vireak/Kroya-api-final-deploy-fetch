@@ -11,6 +11,6 @@ import java.util.Optional;
 
 @Repository
 public interface NotificationRepository extends JpaRepository<NotificationEntity,Long> {
-    List<NotificationEntity> findByReceiverOrderByCreatedDateDesc(UserEntity receiver, PageRequest pageRequest);
+    List<NotificationEntity> findByReceiverOrderByCreatedDateDesc(UserEntity receiver);
     NotificationEntity findByReceiverIdAndId(Integer userId,Long id);
 }

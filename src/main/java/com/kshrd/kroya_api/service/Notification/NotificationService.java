@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public interface NotificationService {
-    BaseResponse<?> getNotification(Integer pageNumber, Integer pageSize);
+    BaseResponse<?> getNotification();
     BaseResponse<?> deletedNotification(Long id);
     BaseResponse<?> updateNotificationStatus(Long id);
 }
