@@ -5,6 +5,8 @@ import com.kshrd.kroya_api.enums.PaymentType;
 import com.kshrd.kroya_api.enums.PurchaseStatusType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.LocalDateTime;
 
@@ -48,6 +50,7 @@ public class PurchaseEntity {
     @ManyToOne
     @JoinColumn(name = "buyer_id", nullable = false)
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private UserEntity buyer;
 
     @ManyToOne
