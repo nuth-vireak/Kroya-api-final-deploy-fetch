@@ -510,16 +510,16 @@ public class UserServiceImpl implements UserService {
             throw new NotFoundExceptionHandler("Credentials not found for the provided user ID.");
         }
 
-        // Map CredentialEntity to CredentialResponse
-        CredentialResponse response = new CredentialResponse();
-        response.setId(credential.getId().intValue()); // Cast Long to Integer
-        response.setAccountNo(credential.getAccountNo());
-        response.setUserId(credential.getUser() != null ? credential.getUser().getId() : null);
+//        // Map CredentialEntity to CredentialResponse
+//        CredentialResponse response = new CredentialResponse();
+//        response.setId(credential.getId().intValue()); // Cast Long to Integer
+//        response.setAccountNo(credential.getAccountNo());
+//        response.setUserId(credential.getUser() != null ? credential.getUser().getId() : null);
 
         return BaseResponse.builder()
                 .message("Webill account details fetched successfully")
                 .statusCode(String.valueOf(HttpStatus.OK.value()))
-                .payload(response)
+                .payload(credential)
                 .build();
     }
 
