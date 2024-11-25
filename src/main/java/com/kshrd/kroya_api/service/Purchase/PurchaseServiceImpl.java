@@ -23,6 +23,7 @@ import com.kshrd.kroya_api.repository.User.UserRepository;
 import com.kshrd.kroya_api.service.Notification.PushNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,6 +32,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -92,7 +94,7 @@ public class PurchaseServiceImpl implements PurchaseService {
         RecipeEntity recipeEntity = new RecipeEntity();
         recipeEntity.setPaidBy(paymentType);
         recipeEntity.setPaidDate(LocalDateTime.now());
-        recipeEntity.setReference("828200000"); // Example reference, replace with actual if needed
+        recipeEntity.setReference(RandomStringUtils.randomAlphanumeric(8));
         recipeEntity.setPurchase(purchaseEntity);
         recipeEntity = recipeRepository.save(recipeEntity);
 
@@ -129,6 +131,7 @@ public class PurchaseServiceImpl implements PurchaseService {
                 .paidBy(paymentType)
                 .payer(buyer.getFullName())
                 .seller(seller.getFullName())
+                .sellerPhoneNumber(seller.getPhoneNumber())
                 .quantity(quantity)
                 .totalPrice(totalPrice)
                 .build();

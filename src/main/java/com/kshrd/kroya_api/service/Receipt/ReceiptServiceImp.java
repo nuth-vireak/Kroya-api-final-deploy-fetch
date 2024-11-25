@@ -78,6 +78,7 @@ public class ReceiptServiceImp implements ReceiptService {
                 .paidBy(receipt.getPaidBy())
                 .payer(purchase.getBuyer().getFullName())
                 .seller(product.getFoodRecipe().getUser().getFullName())
+                .sellerPhoneNumber(product.getFoodRecipe().getUser().getPhoneNumber())
                 .quantity(purchase.getQuantity())
                 .totalPrice(purchase.getTotalPrice())
                 .build();

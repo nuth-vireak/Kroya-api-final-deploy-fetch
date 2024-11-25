@@ -22,6 +22,7 @@ public class ReceiptResponse {
    private PaymentType paidBy;
    private String payer;
    private String seller;
+   private String sellerPhoneNumber;
    private Integer quantity;
    private Double totalPrice;
 
