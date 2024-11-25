@@ -3,23 +3,34 @@ package com.kshrd.kroya_api.config;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.messaging.FirebaseMessaging;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 
 @Configuration
 public class FirebaseConfig {
 
-    @Bean
-    public FirebaseApp initializeFirebase() throws IOException {
-        FileInputStream serviceAccount = new FileInputStream("src/main/resources/kroya-65e3e-firebase-adminsdk-ufvm1-57d361473f.json");
+    @Value("${firebase.config.path}")
+    private String firebaseConfigPath;
 
-        FirebaseOptions options = FirebaseOptions.builder()
-                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+    @Bean
+    public FirebaseMessaging firebaseMessaging() throws IOException {
+        // Debugging: Print the path to ensure it's correct
+        System.out.println("Firebase Config Path: " + firebaseConfigPath);
+
+        GoogleCredentials googleCredentials = GoogleCredentials
+                .fromStream(new ClassPathResource(firebaseConfigPath).getInputStream());
+
+        FirebaseOptions firebaseOptions = FirebaseOptions
+                .builder()
+                .setCredentials(googleCredentials)
                 .build();
 
-        return FirebaseApp.initializeApp(options);
+        FirebaseApp app = FirebaseApp.initializeApp(firebaseOptions);
+        return FirebaseMessaging.getInstance(app);
     }
 }

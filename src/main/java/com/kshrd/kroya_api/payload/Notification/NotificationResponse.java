@@ -2,6 +2,7 @@ package com.kshrd.kroya_api.payload.Notification;
 
 import com.kshrd.kroya_api.enums.FoodCardType;
 import com.kshrd.kroya_api.enums.ItemType;
+import com.kshrd.kroya_api.enums.PurchaseStatusType;
 import com.kshrd.kroya_api.payload.Receipt.ReceiptResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,5 +25,6 @@ public class NotificationResponse {
     @Builder.Default
     private ItemType itemType = ItemType.FOOD_SELL;
     private FoodCardType foodCardType;
+    private PurchaseStatusType purchaseStatusType;
     private LocalDateTime createdDate;
 }

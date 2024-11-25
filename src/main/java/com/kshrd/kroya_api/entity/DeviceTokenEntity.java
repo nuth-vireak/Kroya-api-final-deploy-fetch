@@ -23,6 +23,7 @@ public class DeviceTokenEntity {
 
     @Column(name = "device_token")
     private  String deviceToken;
+
     @OneToOne
     @JoinColumn(name = "user_id")
     @JsonIgnore

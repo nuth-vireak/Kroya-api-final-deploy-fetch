@@ -69,6 +69,7 @@ public class NotificationServiceImp implements NotificationService {
                             .foodPhoto(foodPhoto)
                             .itemType(ItemType.FOOD_SELL)  // Defaulted as per the new response structure
                             .foodCardType(foodCardType)  // Assuming this is an order notification, adjust if needed
+                            .purchaseStatusType(notification.getRecipe().getPurchase().getPurchaseStatusType())
                             .createdDate(notification.getCreatedDate())
                             .build();
                 }

@@ -157,6 +157,26 @@ public class PurchaseServiceImpl implements PurchaseService {
                 .build();
         notificationRepository.save(buyerNotification);
 
+        // Retrieve FCM device tokens from DeviceTokenRepository
+        DeviceTokenEntity sellerDeviceTokenEntity = deviceTokenRepository.findByUser(seller);
+        DeviceTokenEntity buyerDeviceTokenEntity = deviceTokenRepository.findByUser(buyer);
+
+        if (sellerDeviceTokenEntity != null) {
+            String sellerToken = sellerDeviceTokenEntity.getDeviceToken();
+            // Send FCM notification to seller
+            String sellerTitle = "New Order Received";
+            String sellerMessage = String.format("%s ordered %s. Please prepare the meal.", buyer.getFullName(), product.getFoodRecipe().getName());
+            pushNotificationService.sendNotification(sellerToken, sellerTitle, sellerMessage);
+        }
+
+        if (buyerDeviceTokenEntity != null) {
+            String buyerToken = buyerDeviceTokenEntity.getDeviceToken();
+            // Send FCM notification to buyer
+            String buyerTitle = "Order Placed Successfully";
+            String buyerMessage = String.format("Your order for %s has been placed successfully.", product.getFoodRecipe().getName());
+            pushNotificationService.sendNotification(buyerToken, buyerTitle, buyerMessage);
+        }
+
 
 //        // Retrieve FCM device tokens from DeviceTokenRepository
 //        String sellerToken = deviceTokenRepository.findByUser(seller).getDeviceToken();
