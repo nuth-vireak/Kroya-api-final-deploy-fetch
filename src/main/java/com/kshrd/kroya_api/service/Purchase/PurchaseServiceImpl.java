@@ -180,39 +180,6 @@ public class PurchaseServiceImpl implements PurchaseService {
             pushNotificationService.sendNotification(buyerToken, buyerTitle, buyerMessage);
         }
 
-
-//        // Retrieve FCM device tokens from DeviceTokenRepository
-//        String sellerToken = deviceTokenRepository.findByUser(seller).getDeviceToken();
-//        String buyerToken = deviceTokenRepository.findByUser(buyer).getDeviceToken();
-//
-//        // Send FCM notification to seller
-//        String sellerTitle = "New Order Received";
-//        String sellerMessage = String.format("%s ordered %s. Please prepare the meal.", buyer.getFullName(), product.getFoodRecipe().getName());
-//        pushNotificationService.sendNotification(sellerToken, sellerTitle, sellerMessage);
-//
-//        // Send FCM notification to buyer
-//        String buyerTitle = "Order Placed Successfully";
-//        String buyerMessage = String.format("Your order for %s has been placed successfully.", product.getFoodRecipe().getName());
-//        pushNotificationService.sendNotification(buyerToken, buyerTitle, buyerMessage);
-
-//        if (sellerDeviceTokenEntity != null) {
-//            String sellerToken = sellerDeviceTokenEntity.getDeviceToken();
-//            // Send FCM notification to seller
-//            String sellerTitle = "ការកម្មង់ថ្មីបានមកដល់!";
-//            String sellerMessage = String.format("%s បានកម្មង់ %s។ សូមរៀបចំម្ហូបឱ្យបានរួសរាន់។", buyer.getFullName(), product.getFoodRecipe().getName());
-//            pushNotificationService.sendNotification(sellerToken, sellerTitle, sellerMessage);
-//        }
-//
-//        if (buyerDeviceTokenEntity != null) {
-//            String buyerToken = buyerDeviceTokenEntity.getDeviceToken();
-//            // Send FCM notification to buyer
-//            String buyerTitle = "ការកម្មង់បានជោគជ័យ";
-//            String buyerMessage = String.format("ការកម្មង់របស់អ្នកសម្រាប់ %s បានបញ្ចប់ដោយជោគជ័យ! សូមរង់ចាំម្ហូបរបស់អ្នកនៅក្នុងពេលឆាប់ៗនេះ។", product.getFoodRecipe().getName());
-//            pushNotificationService.sendNotification(buyerToken, buyerTitle, buyerMessage);
-//        }
-
-
-
         return BaseResponse.builder()
                 .message("Purchase successfully!")
                 .statusCode(String.valueOf(HttpStatus.OK.value()))
@@ -390,20 +357,6 @@ public class PurchaseServiceImpl implements PurchaseService {
             titleForBuyer = String.format("Your order is Pending");
             descriptionForBuyer = String.format("Your order is pending. %s will review it soon.", seller.getFullName());
         }
-//        String descriptionForBuyer = "";
-//        String titleForBuyer = "";
-//        if (newStatus == PurchaseStatusType.ACCEPTED) {
-//            titleForBuyer = String.format("%s បានទទួលការកម្មង់របស់អ្នក!", seller.getFullName());
-//            descriptionForBuyer = "ម្ហូបរបស់អ្នកកំពុងត្រូវរៀបចំ! សូមរង់ចាំឱ្យមួយភ្លែត";
-//        }
-//        if (newStatus == PurchaseStatusType.REJECTED) {
-//            titleForBuyer = String.format("%s បានបដិសេធការកម្មង់របស់អ្នក", seller.getFullName());
-//            descriptionForBuyer = "កុំបារម្ភ! អ្នកអាចសាកល្បងម្ដងទៀតនៅពេលក្រោយ";
-//        }
-//        if (newStatus == PurchaseStatusType.PENDING) {
-//            titleForBuyer = "ការកម្មង់របស់អ្នកកំពុងរង់ចាំការពិនិត្យ!";
-//            descriptionForBuyer = String.format("%s កំពុងពិនិត្យមើលការកម្មង់របស់អ្នក, សូមរង់ចាំបន្តិចទៀត", seller.getFullName());
-//        }
 
         NotificationEntity buyerNotification = NotificationEntity.builder()
                 .recipe(recipeEntity)
@@ -422,19 +375,6 @@ public class PurchaseServiceImpl implements PurchaseService {
             // seller name accepted your order.
             pushNotificationService.sendNotification(buyerToken, titleForBuyer, descriptionForBuyer);
         }
-
-//        // Retrieve FCM device tokens from DeviceTokenRepository
-//        String buyerToken = deviceTokenRepository.findByUser(buyer).getDeviceToken();
-//
-//        // Send FCM notification to seller
-//        String sellerTitle = "New Order Received";
-//        String sellerMessage = String.format("%s ordered %s. Please prepare the meal.", buyer.getFullName(), product.getFoodRecipe().getName());
-//        pushNotificationService.sendNotification(sellerToken, sellerTitle, sellerMessage);
-//
-//        // Send FCM notification to buyer
-//        String buyerTitle = "Order Placed Successfully";
-//        String buyerMessage = String.format("Your order for %s has been placed successfully.", product.getFoodRecipe().getName());
-//        pushNotificationService.sendNotification(buyerToken, buyerTitle, buyerMessage);
 
         return BaseResponse.builder()
                 .message("Order status updated successfully")

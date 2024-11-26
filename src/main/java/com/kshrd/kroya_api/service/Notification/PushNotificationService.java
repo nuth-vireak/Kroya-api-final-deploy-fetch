@@ -1,8 +1,6 @@
 package com.kshrd.kroya_api.service.Notification;
 
-import com.google.firebase.messaging.FirebaseMessaging;
-import com.google.firebase.messaging.Message;
-import com.google.firebase.messaging.Notification;
+import com.google.firebase.messaging.*;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +21,11 @@ public class PushNotificationService {
         Message message = Message.builder()
                 .setToken(token)
                 .setNotification(notification)
+                .setApnsConfig(ApnsConfig.builder()
+                        .setAps(Aps.builder()
+                                .setSound("default") // Add this for sound
+                                .build())
+                        .build())
                 .build();
 
         try {
