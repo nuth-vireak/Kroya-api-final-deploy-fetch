@@ -143,8 +143,9 @@ public class FoodSellServiceImpl implements FoodSellService {
         log.info("User authenticated: {}", currentUser.getEmail());
 
         // Fetch all FoodSellEntity records from the database
-        List<FoodSellEntity> foodSellEntities = foodSellRepository.findAll();
+//        List<FoodSellEntity> foodSellEntities = foodSellRepository.findAll();
 
+        List<FoodSellEntity> foodSellEntities = foodSellRepository.findAllByOrderByIdDesc();
         // Fetch the user's favorite sell items
         List<FavoriteEntity> userFavorites = favoriteRepository.findByUserAndFoodSellIsNotNull(currentUser);
         List<Long> userFavoriteSellIds = userFavorites.stream()

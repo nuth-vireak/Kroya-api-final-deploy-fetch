@@ -157,8 +157,9 @@ public class FoodRecipeServiceImpl implements FoodRecipeService {
         log.info("User authenticated: {}", currentUser.getEmail());
 
         // Fetch all FoodRecipeEntity records from the database
-        List<FoodRecipeEntity> foodRecipeEntities = foodRecipeRepository.findAll();
+//        List<FoodRecipeEntity> foodRecipeEntities = foodRecipeRepository.findAll();
 
+        List<FoodRecipeEntity> foodRecipeEntities = foodRecipeRepository.findAllByOrderByIdDesc();
         // Fetch the user's favorite recipes
         List<FavoriteEntity> userFavorites = favoriteRepository.findByUserAndFoodRecipeIsNotNull(currentUser);
         List<Long> userFavoriteRecipeIds = userFavorites.stream()

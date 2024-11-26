@@ -44,4 +44,6 @@ public interface FoodSellRepository extends JpaRepository<FoodSellEntity, Long> 
     List<FoodSellEntity> findByFoodRecipe_User_Id(Integer id);
 
     Collection<Object> findByFoodRecipe_User_IdAndFoodRecipe_NameContainingIgnoreCase(Integer userId, String name);
+
+    List<FoodSellEntity> findAllByOrderByIdDesc();
 }
