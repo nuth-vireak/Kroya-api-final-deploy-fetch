@@ -1,14 +1,18 @@
 package com.kshrd.kroya_api.service.File;
 
 import com.kshrd.kroya_api.entity.FileEntity;
+import com.kshrd.kroya_api.exception.NotFoundExceptionHandler;
 import com.kshrd.kroya_api.repository.File.FileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -52,11 +56,32 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public Resource getFile(String fileName) throws IOException {
-        FileEntity files = fileRepository.findByFileName(fileName);
-        Path path = Paths.get("src/main/resources/Datauplaod/" + files.getFileName());
-//        Path path=Paths.get("/home/hrd123/easycartImage/"+files.getFileName());
-        Resource file = new ByteArrayResource(Files.readAllBytes(path));
-        return file;
+    public Resource getFile(String fileName) {
+        try {
+            // Find the file entity from the repository
+            FileEntity files = fileRepository.findByFileName(fileName);
+            if (files == null) {
+                throw new FileNotFoundException("File not found with name: " + fileName);
+            }
+
+            // Define the path to the file
+            Path path = Paths.get("src/main/resources/Datauplaod/" + files.getFileName());
+            // Read the file into a Resource object
+            Resource file = new ByteArrayResource(Files.readAllBytes(path));
+            return file;
+
+        } catch (FileNotFoundException e) {
+            // Handle the case when the file entity is not found
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+
+        } catch (IOException e) {
+            // Handle issues with file access
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error reading file: " + fileName, e);
+
+        } catch (Exception e) {
+            // Handle any other unexpected errors
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error occurred", e);
+        }
     }
+
 }
