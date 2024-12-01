@@ -19,6 +19,7 @@ public class SellerOrderCardResponse {
     private Long foodSellId;
     private String name;
     private Double price;
+    private String currencyType;
     private Integer orderCount;
     private List<PhotoDTO> photo;
     private LocalDateTime dateCooking;
